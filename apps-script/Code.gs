@@ -66,7 +66,14 @@ function doGet(e) {
       return out_({error: String(err.message || err)});
     }
   }
-  return HtmlService.createHtmlOutputFromFile('index')
+  // 붙여넣기가 중간에 잘렸는지 검사 (index.html 맨 끝에 표식이 있어야 함)
+  const html = HtmlService.createHtmlOutputFromFile('index').getContent();
+  if (html.indexOf('END-OF-INDEX') < 0) {
+    return HtmlService.createHtmlOutput(
+      '<p style="font:16px sans-serif">index.html 파일이 끝까지 붙여넣어지지 않았습니다 (현재 ' +
+      html.length + '자). GitHub의 apps-script/index.html을 Raw로 열어 전체 복사한 뒤 다시 붙여넣고 새 버전으로 배포하세요.</p>');
+  }
+  return HtmlService.createHtmlOutput(html)
     .setTitle('인력관리 대시보드')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
