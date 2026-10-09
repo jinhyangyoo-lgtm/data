@@ -1,0 +1,173 @@
+<script>
+/* ---------- 일별 입력 패널 ---------- */
+function renderPanel(){
+  const r=db.rec[sel]||{};
+  const d=new Date(sel+'T00:00');
+  const cnt=Object.keys(r).length;
+  let h=`<h3>${sel} (${'일월화수목금토'[d.getDay()]}) 근무 입력 <small style="font-weight:400;color:var(--mute)">· 출근 ${cnt}명</small></h3>
+  <div class="hint">체크하면 출근으로 기록되며 기본값은 전일근무입니다. 사람별로 반일·시간제로 바꾸거나 메모를 남길 수 있습니다.</div>`;
+  for(const g of groups()){
+    const members=db.staff.filter(s=>s.grp===g);
+    const bt=bulkType[g]||'full';
+    h+=`<div class="group"><div class="ghead"><b>${esc(g)} <span style="color:var(--mute);font-weight:400">(${members.length}명)</span></b>
+      <select data-bt="${esc(g)}">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${k===bt?'selected':''}>${v}</option>`).join('')}</select>
+      <button data-all="${esc(g)}">전원 출근 입력</button><button data-none="${esc(g)}">전원 해제</button></div>`;
+    for(const s of members){
+      const x=r[s.name];
+      h+=`<div class="row" data-n="${esc(s.name)}">
+        <input type="checkbox" ${x?'checked':''} data-f="on">
+        <div class="nm"><b>${esc(s.name)}</b> <small>${esc(s.nat)}</small></div>
+        <select data-f="type" ${x?'':'disabled'}>${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${x&&x.type===k?'selected':''}>${v}</option>`).join('')}</select>
+        <div class="hrs"><input type="number" data-f="hours" min="0" max="24" step="0.5" placeholder="시간" value="${x&&x.hours||''}" ${x&&x.type==='part'?'':'disabled'}></div>
+        <div class="memo"><input type="text" data-f="memo" placeholder="메모" value="${esc(x&&x.memo)}" ${x?'':'disabled'}></div>
+      </div>`;
+    }
+    h+='</div>';
+  }
+  $('#panel').innerHTML=h;
+}
+function setRec(name,x){
+  db.rec[sel]=db.rec[sel]||{};
+  if(x)db.rec[sel][name]=x;else delete db.rec[sel][name];
+  if(!Object.keys(db.rec[sel]).length)delete db.rec[sel];
+  markDay(sel);
+}
+$('#panel').addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.bt){bulkType[t.dataset.bt]=t.value;return}
+  const row=t.closest('.row');if(!row)return;
+  const name=row.dataset.n,f=t.dataset.f;
+  const cur=(db.rec[sel]||{})[name];
+  if(f==='on')setRec(name,t.checked?{type:'full',hours:'',memo:''}:null);
+  else if(cur){
+    if(f==='type'){cur.type=t.value;if(t.value!=='part')cur.hours=''}
+    else cur[f]=t.value;
+  }
+  save();renderCal();renderPanel();
+  if(f==='memo'||f==='hours')row.querySelector(`[data-f=${f}]`)?.focus();
+});
+$('#panel').addEventListener('click',e=>{
+  const g=e.target.dataset.all??e.target.dataset.none;
+  if(g===undefined)return;
+  const all=e.target.dataset.all!==undefined;
+  db.staff.filter(s=>s.grp===g).forEach(s=>{
+    if(all){const old=(db.rec[sel]||{})[s.name];if(!old)setRec(s.name,{type:bulkType[g]||'full',hours:'',memo:''})}
+    else setRec(s.name,null);
+  });
+  save();renderCal();renderPanel();
+});
+
+/* ---------- 집계 ---------- */
+function summarize(y,m,from,to){
+  const out=db.staff.map(s=>({s,full:0,half:0,part:0,hours:0,eq:0}));
+  const idx=Object.fromEntries(out.map(o=>[o.s.name,o]));
+  for(let d=from;d<=to;d++){
+    const r=db.rec[ds(y,m,d)];if(!r)continue;
+    for(const [name,x] of Object.entries(r)){
+      const o=idx[name];if(!o)continue;
+      o[x.type]++;o.eq+=WEIGHT[x.type];if(x.type==='part')o.hours+=Number(x.hours)||0;
+    }
+  }
+  return out;
+}
+function table(rows){
+  const t=rows.reduce((a,o)=>({full:a.full+o.full,half:a.half+o.half,part:a.part+o.part,hours:a.hours+o.hours,eq:a.eq+o.eq}),{full:0,half:0,part:0,hours:0,eq:0});
+  return `<div class="scroll"><table><thead><tr><th>이름</th><th>구분</th>
+    <th style="color:var(--full)">전일(일)</th><th style="color:var(--half)">반일(일)</th><th style="color:var(--part)">시간제(일)</th><th style="color:var(--part)">시간제(시간)</th><th>환산 근무일</th></tr></thead><tbody>
+    ${rows.map(o=>`<tr><td>${esc(o.s.name)}</td><td>${esc(o.s.grp)}</td><td>${o.full}</td><td>${o.half}</td><td>${o.part}</td><td>${num(o.hours)}</td><td><b>${num(o.eq)}</b></td></tr>`).join('')}
+    </tbody><tfoot><tr><td>합계</td><td></td><td>${t.full}</td><td>${t.half}</td><td>${t.part}</td><td>${num(t.hours)}</td><td>${num(t.eq)}</td></tr></tfoot></table></div>`;
+}
+function renderMonth(){
+  const n=daysIn(view.y,view.m);
+  $('#tab-month').innerHTML=`<div class="card"><h3>${view.y}년 ${view.m+1}월 직원별 근무 합계<small>1일 ~ ${n}일</small></h3>${table(summarize(view.y,view.m,1,n))}</div>
+  <div class="hint">환산 근무일 = 전일 1일 + 반일 0.5일 (시간제는 일수·시간을 따로 집계)</div>`;
+}
+function renderPay(){
+  const n=daysIn(view.y,view.m);
+  $('#tab-pay').innerHTML=`<div class="grid2">
+    <div class="card"><h3>1일 ~ 15일<small>${view.m+1}/15 지급분</small></h3>${table(summarize(view.y,view.m,1,15))}</div>
+    <div class="card"><h3>16일 ~ ${n}일<small>${view.m+1}/${n} 지급분</small></h3>${table(summarize(view.y,view.m,16,n))}</div></div>
+  <div class="hint">환산 근무일 = 전일 1일 + 반일 0.5일 (시간제는 일수·시간을 따로 집계)</div>`;
+}
+
+/* ---------- 직원 관리 ---------- */
+function cfgCard(){return `<div class="card cfg" style="margin-top:16px;padding:14px"><b>Google Sheets 연결</b>
+  <div class="hint">연결하면 입력 내용이 구글 시트에 자동 저장되고, 어느 기기에서 열어도 같은 데이터를 봅니다.</div>
+  <label>웹앱 URL (Apps Script 배포 주소)</label><input id="cUrl" placeholder="https://script.google.com/macros/s/.../exec" value="${esc(cfg.url||'')}">
+  <label>비밀 토큰 (Code.gs의 TOKEN과 동일, 없으면 비워두기)</label><input id="cTok" value="${esc(cfg.token||'')}">
+  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="cSave">연결·저장</button><button id="cPull">시트에서 다시 불러오기</button><button id="cPush">현재 데이터를 시트에 덮어쓰기</button><button id="cOff">연결 해제</button></div>
+  <details><summary>설정 방법</summary><ol>
+    <li>구글 시트를 새로 만든다.</li>
+    <li>메뉴 <b>확장 프로그램 → Apps Script</b>를 열고 저장소의 <code>apps-script/Code.gs</code> 내용을 붙여넣는다. (원하면 <code>TOKEN</code>에 비밀 문자열 입력)</li>
+    <li><b>배포 → 새 배포 → 유형: 웹 앱</b>, 실행 사용자 <b>나</b>, 액세스 권한 <b>모든 사용자</b>로 배포하고 권한을 승인한다.</li>
+    <li>발급된 <code>/exec</code> URL을 위 칸에 붙여넣고 <b>연결·저장</b>을 누른다. 시트가 비어 있으면 현재 데이터가 자동으로 올라간다.</li>
+  </ol><div class="hint">시트의 '직원', '근무기록' 탭이 자동 생성됩니다. 시트에서 직접 수정한 내용은 "시트에서 다시 불러오기"(또는 새로고침)로 반영됩니다.</div></details></div>`}
+function renderStaff(){
+  $('#tab-staff').innerHTML=`<div class="card"><h3>직원 목록 <button id="addBtn" class="primary" style="float:right;padding:3px 10px">+ 직원 추가</button></h3>
+  <div class="scroll"><table><thead><tr><th>이름</th><th>구분</th><th>국적</th><th></th></tr></thead><tbody>
+  ${db.staff.map((s,i)=>`<tr><td>${esc(s.name)}</td><td>${esc(s.grp)}</td><td style="text-align:left">${esc(s.nat)}</td><td><button data-del="${i}">삭제</button></td></tr>`).join('')}
+  </tbody></table></div></div>
+  ${HOSTED?'<div class="card" style="margin-top:16px;padding:14px"><b>Google Sheets</b><div class="hint">이 페이지는 Apps Script 웹앱으로 실행 중이며, 입력 내용은 연결된 구글 시트(\'직원\', \'근무기록\' 탭)에 자동 저장됩니다.</div></div>':cfgCard()}
+  <div class="card" style="margin-top:16px;padding:14px"><b>데이터 백업</b>
+  <div class="hint">데이터는 이 브라우저에 저장됩니다. 다른 기기로 옮기거나 보관하려면 백업 파일을 내려받으세요.</div>
+  <button id="exp">백업 내려받기 (JSON)</button> <button id="expCsv">이번 달 합계 CSV</button>
+  <label class="hint" style="display:inline-block;margin-left:8px">복원: <input type="file" id="imp" accept=".json"></label></div>`;
+  $('#addBtn').onclick=()=>{$('#grpList').innerHTML=groups().map(g=>`<option value="${esc(g)}">`).join('');$('#dlg').showModal()};
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    const s=db.staff[b.dataset.del];
+    if(confirm(`${s.name} 직원을 목록에서 삭제할까요? (기존 근무기록은 남지만 집계에는 나타나지 않습니다)`)){db.staff.splice(b.dataset.del,1);save();markStaff();renderStaff()}
+  });
+  if(!HOSTED){
+  $('#cSave').onclick=()=>{
+    const url=$('#cUrl').value.trim();
+    if(!/^https:\/\/script\.google\.com\//.test(url)){alert('Apps Script 웹앱 URL(https://script.google.com/...)을 입력하세요.');return}
+    cfg={url,token:$('#cTok').value.trim()};localStorage.setItem(CFG_KEY,JSON.stringify(cfg));pullFromSheet();
+  };
+  $('#cPull').onclick=()=>{if(!cfg.url)return alert('먼저 연결하세요.');if(confirm('시트 내용으로 현재 화면 데이터를 교체할까요?'))pullFromSheet()};
+  $('#cPush').onclick=async()=>{if(!cfg.url)return alert('먼저 연결하세요.');if(confirm('현재 데이터로 시트 내용을 모두 덮어쓸까요?')){markAll();await flush()}};
+  $('#cOff').onclick=()=>{if(confirm('연결을 해제할까요? (시트 데이터는 그대로 남습니다)')){cfg={};localStorage.removeItem(CFG_KEY);sync.days.clear();sync.staff=sync.all=false;saveDirty();setStatus('off');renderStaff()}};
+  }
+  $('#exp').onclick=()=>download('hr-backup.json',JSON.stringify(db),'application/json');
+  $('#expCsv').onclick=()=>{
+    const n=daysIn(view.y,view.m);
+    const row=(label,a,b)=>summarize(view.y,view.m,a,b).map(o=>[label,o.s.name,o.s.grp,o.full,o.half,o.part,o.hours,o.eq].join(','));
+    const csv='﻿기간,이름,구분,전일,반일,시간제일수,시간제시간,환산근무일\n'+[...row('1~15일',1,15),...row(`16~${n}일`,16,n)].join('\n');
+    download(`근무합계-${view.y}-${pad(view.m+1)}.csv`,csv,'text/csv');
+  };
+  $('#imp').onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    f.text().then(t=>{const d=JSON.parse(t);if(!d.staff||!d.rec)throw 0;if(confirm('현재 데이터를 백업 파일 내용으로 덮어쓸까요?')){db=d;save();markAll();renderAll()}}).catch(()=>alert('올바른 백업 파일이 아닙니다.'));
+  };
+}
+function download(name,text,type){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();
+}
+$('#addForm').addEventListener('submit',e=>{
+  if(e.submitter.value!=='ok')return;
+  const name=$('#aName').value.trim();
+  if(!name||db.staff.some(s=>s.name===name)){alert('이름이 비어있거나 이미 존재합니다.');e.preventDefault();return}
+  db.staff.push({name,nat:$('#aNat').value.trim(),grp:$('#aGrp').value.trim(),memo:''});
+  save();markStaff();e.target.reset();renderStaff();renderCal();renderPanel();
+});
+
+/* ---------- 공통 ---------- */
+function renderAll(){
+  $('#monthbar').classList.toggle('hidden',tab==='staff');
+  for(const t of ['cal','month','pay','staff'])$('#tab-'+t).classList.toggle('hidden',t!==tab);
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  if(tab==='cal'){renderCal();renderPanel()}
+  if(tab==='month')renderMonth();
+  if(tab==='pay')renderPay();
+  if(tab==='staff')renderStaff();
+  $('#mtitle').textContent=`${view.y}년 ${view.m+1}월`;
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;renderAll()});
+const shift=k=>{const d=new Date(view.y,view.m+k,1);view={y:d.getFullYear(),m:d.getMonth()};renderAll()};
+$('#prev').onclick=()=>shift(-1);$('#next').onclick=()=>shift(1);
+$('#goToday').onclick=()=>{view={y:now.getFullYear(),m:now.getMonth()};sel=ds(now.getFullYear(),now.getMonth(),now.getDate());renderAll()};
+$('#sstat').onclick=()=>{cfg.url?(sync.days.size||sync.staff||sync.all?flush():pullFromSheet()):(tab='staff',renderAll())};
+setStatus(cfg.url?'busy':'off');
+renderAll();
+pullFromSheet();
+</script>
+<!--END-OF-app2-->

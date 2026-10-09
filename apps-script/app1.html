@@ -1,0 +1,119 @@
+<script>
+const TYPES={full:'전일',half:'반일',part:'시간제'};
+const WEIGHT={full:1,half:0.5,part:0};
+const KEY='hr-dashboard-v1';
+const DEFAULT_STAFF=[
+  {name:'조',nat:'태국',grp:'상근',memo:''},{name:'짙',nat:'태국',grp:'상근',memo:''},
+  {name:'파이',nat:'태국',grp:'상근',memo:''},{name:'짱',nat:'베트남',grp:'계절',memo:''},
+  {name:'유이',nat:'베트남',grp:'계절',memo:''},{name:'푄',nat:'태국',grp:'예비',memo:''},
+  {name:'놈',nat:'태국',grp:'예비',memo:''}];
+
+let db;
+try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!db||!db.staff)db={staff:DEFAULT_STAFF,rec:{}};   // rec[date][name]={type,hours,memo}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
+
+/* ---------- Google Sheets 동기화 (Apps Script 웹앱) ---------- */
+const CFG_KEY='hr-dashboard-sheet',DIRTY_KEY='hr-dashboard-dirty';
+// Apps Script 웹앱 안에서 열린 경우(google.script.run 사용 가능) 별도 URL 설정 없이 바로 시트와 연동
+const HOSTED=typeof google!=='undefined'&&!!google.script&&!!google.script.run;
+let cfg={};try{cfg=JSON.parse(localStorage.getItem(CFG_KEY))||{}}catch(e){}
+if(HOSTED)cfg={url:'hosted',token:''};
+const gs=(fn,...a)=>new Promise((ok,ng)=>google.script.run.withSuccessHandler(ok).withFailureHandler(e=>ng(new Error(e&&e.message||e)))[fn](...a));
+const sync={days:new Set(),staff:false,all:false,busy:false,state:cfg.url?'busy':'off',msg:'',timer:null};
+try{const d=JSON.parse(localStorage.getItem(DIRTY_KEY)||'{}');(d.days||[]).forEach(x=>sync.days.add(x));sync.staff=!!d.staff;sync.all=!!d.all}catch(e){}
+const saveDirty=()=>{try{localStorage.setItem(DIRTY_KEY,JSON.stringify({days:[...sync.days],staff:sync.staff,all:sync.all}))}catch(e){}};
+function setStatus(state,msg=''){
+  sync.state=state;sync.msg=msg;
+  const b=document.getElementById('sstat');if(!b)return;
+  const t={off:'로컬 저장만',busy:'시트 동기화 중…',ok:'✔ Google Sheets 동기화됨',err:'⚠ 동기화 실패 (클릭하여 재시도)'}[state];
+  b.textContent=t;b.className='stat '+(state==='ok'?'ok':state==='err'?'err':state==='busy'?'busy':'');
+  b.title=msg||'클릭: 지금 동기화';
+}
+async function api(body){
+  if(HOSTED)return gs('apiCall',body);
+  const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:cfg.token||'',...body})});
+  const j=await r.json();if(j.error)throw new Error(j.error);return j;
+}
+async function fetchAll(){
+  if(HOSTED)return gs('apiRead');
+  const u=cfg.url+(cfg.url.includes('?')?'&':'?')+'token='+encodeURIComponent(cfg.token||'');
+  const j=await (await fetch(u)).json();if(j.error)throw new Error(j.error);return j;
+}
+function markDay(d){if(cfg.url){sync.days.add(d);saveDirty();queueFlush()}}
+function markStaff(){if(cfg.url){sync.staff=true;saveDirty();queueFlush()}}
+function markAll(){if(cfg.url){sync.all=true;saveDirty();queueFlush()}}
+function queueFlush(){if(!cfg.url)return;setStatus('busy');clearTimeout(sync.timer);sync.timer=setTimeout(flush,600)}
+async function flush(){
+  if(!cfg.url)return true;
+  if(sync.busy){queueFlush();return false}
+  if(!sync.days.size&&!sync.staff&&!sync.all){setStatus('ok');return true}
+  sync.busy=true;setStatus('busy');
+  // 보낼 목록을 먼저 떼어내고, 실패하면 되돌린다 (전송 중 새로 바뀐 날짜는 그대로 남음)
+  const days=[...sync.days],staff=sync.staff,all=sync.all;
+  sync.days.clear();sync.staff=false;sync.all=false;saveDirty();
+  try{
+    if(all)await api({action:'setAll',staff:db.staff,rec:db.rec});
+    else{
+      if(staff)await api({action:'setStaff',staff:db.staff});
+      for(const d of days)await api({action:'setDay',date:d,entries:db.rec[d]||{}});
+    }
+    sync.busy=false;
+    if(sync.days.size||sync.staff||sync.all)return flush();
+    setStatus('ok');return true;
+  }catch(e){
+    days.forEach(d=>sync.days.add(d));sync.staff=sync.staff||staff;sync.all=sync.all||all;saveDirty();
+    sync.busy=false;setStatus('err',e.message);return false;
+  }
+}
+async function pullFromSheet(){
+  if(!cfg.url)return;
+  setStatus('busy');
+  try{
+    if(sync.days.size||sync.staff||sync.all){if(!await flush())return}   // 미전송 변경분 먼저 올림
+    const j=await fetchAll();
+    if(!j.staff.length&&!Object.keys(j.rec).length){markAll();await flush()}  // 빈 시트: 현재 데이터를 올려 초기화
+    else{db={staff:j.staff,rec:j.rec};save();renderAll()}
+    setStatus('ok');
+  }catch(e){setStatus('err',e.message)}
+}
+
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const ds=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num=n=>Number.isInteger(n)?n:n.toFixed(1);
+const now=new Date();
+let view={y:now.getFullYear(),m:now.getMonth()};
+let sel=ds(now.getFullYear(),now.getMonth(),now.getDate());
+let tab='cal';
+let bulkType={};   // 구분별 일괄 입력 시 사용할 근무형태
+
+const groups=()=>[...new Set(db.staff.map(s=>s.grp))];
+const daysIn=(y,m)=>new Date(y,m+1,0).getDate();
+
+/* ---------- 캘린더 ---------- */
+function renderCal(){
+  $('#mtitle').textContent=`${view.y}년 ${view.m+1}월`;
+  const first=new Date(view.y,view.m,1).getDay(), n=daysIn(view.y,view.m);
+  let h=['일','월','화','수','목','금','토'].map(d=>`<div class="dow">${d}</div>`).join('');
+  const todayS=ds(now.getFullYear(),now.getMonth(),now.getDate());
+  const total=Math.ceil((first+n)/7)*7;
+  for(let i=0;i<total;i++){
+    const d=new Date(view.y,view.m,1-first+i);
+    const k=ds(d.getFullYear(),d.getMonth(),d.getDate());
+    const other=d.getMonth()!==view.m, dw=d.getDay();
+    const r=db.rec[k]||{};
+    const chips=db.staff.filter(s=>r[s.name]).map(s=>{
+      const x=r[s.name];
+      const label=x.type==='part'?`${s.name} ${x.hours?x.hours+'h':'시간제'}`:`${s.name} ${x.type==='half'?'반':''}`;
+      return `<div class="chip ${x.type}" title="${esc(s.name)} ${TYPES[x.type]}${x.memo?' · '+esc(x.memo):''}">${esc(label)}${x.memo?' <span class="memo">📝</span>':''}</div>`;
+    }).join('');
+    h+=`<div class="day ${other?'other':''} ${k===todayS?'today':''} ${k===sel?'sel':''} ${dw===0?'sun':dw===6?'sat':''}" data-d="${k}"><span class="num">${d.getDate()}</span>${chips}</div>`;
+  }
+  $('#cal').innerHTML=h;
+  $('#cal').querySelectorAll('.day').forEach(e=>e.onclick=()=>{sel=e.dataset.d;const d=new Date(sel);if(d.getMonth()!==view.m){view={y:d.getFullYear(),m:d.getMonth()}}renderCal();renderPanel()});
+}
+
+</script>
+<!--END-OF-app1-->

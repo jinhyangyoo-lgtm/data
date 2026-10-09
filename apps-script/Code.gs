@@ -66,19 +66,23 @@ function doGet(e) {
       return out_({error: String(err.message || err)});
     }
   }
-  // 붙여넣기가 중간에 잘렸는지 검사 (index.html 맨 끝에 표식이 있어야 함)
-  const html = HtmlService.createHtmlOutputFromFile('index').getContent();
-  if (html.indexOf('END-OF-INDEX') < 0) {
+  // 붙여넣기가 중간에 잘렸는지 검사 (각 파일 맨 끝에 END-OF-파일명 표식이 있어야 함)
+  const parts = ['index', 'style', 'app1', 'app2'];
+  const bad = parts.filter(n => HtmlService.createHtmlOutputFromFile(n).getContent().indexOf('END-OF-' + n) < 0);
+  if (bad.length) {
     return HtmlService.createHtmlOutput(
-      '<p style="font:16px sans-serif">index.html 파일이 끝까지 붙여넣어지지 않았습니다 (현재 ' +
-      html.length + '자). GitHub의 apps-script/index.html을 Raw로 열어 전체 복사한 뒤 다시 붙여넣고 새 버전으로 배포하세요.</p>');
+      '<p style="font:16px sans-serif">다음 파일이 끝까지 붙여넣어지지 않았습니다: ' + bad.join(', ') +
+      '.html — 해당 파일 내용을 지우고 다시 붙여넣은 뒤 새 버전으로 배포하세요.</p>');
   }
-  return HtmlService.createHtmlOutput(html)
+  return HtmlService.createTemplateFromFile('index').evaluate()
     .setTitle('인력관리 대시보드')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 // 대시보드(google.script.run)에서 호출하는 함수들
+function include_(name) {
+  return HtmlService.createHtmlOutputFromFile(name).getContent();
+}
 function apiRead() {
   return readAll_();
 }
