@@ -55,39 +55,64 @@ function recRows_(date, entries) {
   });
 }
 
+// 브라우저에서 웹앱 URL을 열면 대시보드(index.html)를 보여준다.
+// (token 파라미터가 있는 요청은 외부에 올린 페이지용 JSON API)
 function doGet(e) {
-  try {
-    auth_(e.parameter.token);
-    return out_(readAll_());
-  } catch (err) {
-    return out_({error: String(err.message || err)});
+  if (e && e.parameter && 'token' in e.parameter) {
+    try {
+      auth_(e.parameter.token);
+      return out_(readAll_());
+    } catch (err) {
+      return out_({error: String(err.message || err)});
+    }
   }
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setTitle('인력관리 대시보드')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-function doPost(e) {
+// 대시보드(google.script.run)에서 호출하는 함수들
+function apiRead() {
+  return readAll_();
+}
+function apiCall(b) {
+  return locked_(() => apply_(b));
+}
+
+function locked_(fn) {
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    const b = JSON.parse(e.postData.contents);
-    auth_(b.token);
-    if (b.action === 'setStaff') {
-      write_(sheet_('직원', H_STAFF), 3, b.staff.map(s => [safe_(s.name), safe_(s.nat), safe_(s.grp)]));
-    } else if (b.action === 'setDay') {
-      const s = sheet_('근무기록', H_REC);
-      const keep = rows_(s, 5).filter(r => r[0] && r[0] !== b.date);
-      write_(s, 5, keep.concat(recRows_(b.date, b.entries)));
-    } else if (b.action === 'setAll') {
-      write_(sheet_('직원', H_STAFF), 3, b.staff.map(s => [safe_(s.name), safe_(s.nat), safe_(s.grp)]));
-      let all = [];
-      Object.keys(b.rec).sort().forEach(d => { all = all.concat(recRows_(d, b.rec[d])); });
-      write_(sheet_('근무기록', H_REC), 5, all);
-    } else {
-      throw new Error('unknown action');
-    }
-    return out_({ok: true});
-  } catch (err) {
-    return out_({error: String(err.message || err)});
+    return fn();
   } finally {
     lock.releaseLock();
+  }
+}
+
+function apply_(b) {
+  if (b.action === 'setStaff') {
+    write_(sheet_('직원', H_STAFF), 3, b.staff.map(s => [safe_(s.name), safe_(s.nat), safe_(s.grp)]));
+  } else if (b.action === 'setDay') {
+    const s = sheet_('근무기록', H_REC);
+    const keep = rows_(s, 5).filter(r => r[0] && r[0] !== b.date);
+    write_(s, 5, keep.concat(recRows_(b.date, b.entries)));
+  } else if (b.action === 'setAll') {
+    write_(sheet_('직원', H_STAFF), 3, b.staff.map(s => [safe_(s.name), safe_(s.nat), safe_(s.grp)]));
+    let all = [];
+    Object.keys(b.rec).sort().forEach(d => { all = all.concat(recRows_(d, b.rec[d])); });
+    write_(sheet_('근무기록', H_REC), 5, all);
+  } else {
+    throw new Error('unknown action');
+  }
+  return {ok: true};
+}
+
+function doPost(e) {
+  try {
+    const b = JSON.parse(e.postData.contents);
+    auth_(b.token);
+    return out_(locked_(() => apply_(b)));
+  } catch (err) {
+    return out_({error: String(err.message || err)});
   }
 }
