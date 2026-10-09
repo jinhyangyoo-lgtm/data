@@ -80,11 +80,16 @@ dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);co
 dialog label{display:block;margin:8px 0 2px;font-size:12px;color:var(--mute)}
 dialog input,dialog select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card)}
 .hidden{display:none}
+.stat{font-size:12px;padding:2px 8px;border-radius:12px;margin-left:8px;vertical-align:2px;color:var(--mute)}
+.stat.ok{color:var(--half)}.stat.err{color:#dc2626;border-color:#dc2626}.stat.busy{color:var(--part)}
+.cfg label{display:block;margin:8px 0 2px;font-size:12px;color:var(--mute)}
+.cfg input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+details{margin-top:10px}details ol{padding-left:20px;margin:6px 0}code{background:var(--bg);padding:1px 4px;border-radius:4px}
 </style>
 </head>
 <body>
 <header>
-  <h1>인력관리 대시보드</h1>
+  <h1>인력관리 대시보드 <button id="sstat" class="stat" title="클릭: 지금 동기화"></button></h1>
   <nav>
     <button data-tab="cal" class="on">캘린더·근무입력</button>
     <button data-tab="month">월별 합계</button>
@@ -137,6 +142,65 @@ let db;
 try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!db||!db.staff)db={staff:DEFAULT_STAFF,rec:{}};   // rec[date][name]={type,hours,memo}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
+
+/* ---------- Google Sheets 동기화 (Apps Script 웹앱) ---------- */
+const CFG_KEY='hr-dashboard-sheet',DIRTY_KEY='hr-dashboard-dirty';
+let cfg={};try{cfg=JSON.parse(localStorage.getItem(CFG_KEY))||{}}catch(e){}
+const sync={days:new Set(),staff:false,all:false,busy:false,state:cfg.url?'busy':'off',msg:'',timer:null};
+try{const d=JSON.parse(localStorage.getItem(DIRTY_KEY)||'{}');(d.days||[]).forEach(x=>sync.days.add(x));sync.staff=!!d.staff;sync.all=!!d.all}catch(e){}
+const saveDirty=()=>{try{localStorage.setItem(DIRTY_KEY,JSON.stringify({days:[...sync.days],staff:sync.staff,all:sync.all}))}catch(e){}};
+function setStatus(state,msg=''){
+  sync.state=state;sync.msg=msg;
+  const b=document.getElementById('sstat');if(!b)return;
+  const t={off:'로컬 저장만',busy:'시트 동기화 중…',ok:'✔ Google Sheets 동기화됨',err:'⚠ 동기화 실패 (클릭하여 재시도)'}[state];
+  b.textContent=t;b.className='stat '+(state==='ok'?'ok':state==='err'?'err':state==='busy'?'busy':'');
+  b.title=msg||'클릭: 지금 동기화';
+}
+async function api(body){
+  const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:cfg.token||'',...body})});
+  const j=await r.json();if(j.error)throw new Error(j.error);return j;
+}
+async function fetchAll(){
+  const u=cfg.url+(cfg.url.includes('?')?'&':'?')+'token='+encodeURIComponent(cfg.token||'');
+  const j=await (await fetch(u)).json();if(j.error)throw new Error(j.error);return j;
+}
+function markDay(d){if(cfg.url){sync.days.add(d);saveDirty();queueFlush()}}
+function markStaff(){if(cfg.url){sync.staff=true;saveDirty();queueFlush()}}
+function markAll(){if(cfg.url){sync.all=true;saveDirty();queueFlush()}}
+function queueFlush(){if(!cfg.url)return;setStatus('busy');clearTimeout(sync.timer);sync.timer=setTimeout(flush,600)}
+async function flush(){
+  if(!cfg.url)return true;
+  if(sync.busy){queueFlush();return false}
+  if(!sync.days.size&&!sync.staff&&!sync.all){setStatus('ok');return true}
+  sync.busy=true;setStatus('busy');
+  // 보낼 목록을 먼저 떼어내고, 실패하면 되돌린다 (전송 중 새로 바뀐 날짜는 그대로 남음)
+  const days=[...sync.days],staff=sync.staff,all=sync.all;
+  sync.days.clear();sync.staff=false;sync.all=false;saveDirty();
+  try{
+    if(all)await api({action:'setAll',staff:db.staff,rec:db.rec});
+    else{
+      if(staff)await api({action:'setStaff',staff:db.staff});
+      for(const d of days)await api({action:'setDay',date:d,entries:db.rec[d]||{}});
+    }
+    sync.busy=false;
+    if(sync.days.size||sync.staff||sync.all)return flush();
+    setStatus('ok');return true;
+  }catch(e){
+    days.forEach(d=>sync.days.add(d));sync.staff=sync.staff||staff;sync.all=sync.all||all;saveDirty();
+    sync.busy=false;setStatus('err',e.message);return false;
+  }
+}
+async function pullFromSheet(){
+  if(!cfg.url)return;
+  setStatus('busy');
+  try{
+    if(sync.days.size||sync.staff||sync.all){if(!await flush())return}   // 미전송 변경분 먼저 올림
+    const j=await fetchAll();
+    if(!j.staff.length&&!Object.keys(j.rec).length){markAll();await flush()}  // 빈 시트: 현재 데이터를 올려 초기화
+    else{db={staff:j.staff,rec:j.rec};save();renderAll()}
+    setStatus('ok');
+  }catch(e){setStatus('err',e.message)}
+}
 
 const $=s=>document.querySelector(s);
 const pad=n=>String(n).padStart(2,'0');
@@ -206,6 +270,7 @@ function setRec(name,x){
   db.rec[sel]=db.rec[sel]||{};
   if(x)db.rec[sel][name]=x;else delete db.rec[sel][name];
   if(!Object.keys(db.rec[sel]).length)delete db.rec[sel];
+  markDay(sel);
 }
 $('#panel').addEventListener('change',e=>{
   const t=e.target;
@@ -271,6 +336,17 @@ function renderStaff(){
   <div class="scroll"><table><thead><tr><th>이름</th><th>구분</th><th>국적</th><th></th></tr></thead><tbody>
   ${db.staff.map((s,i)=>`<tr><td>${esc(s.name)}</td><td>${esc(s.grp)}</td><td style="text-align:left">${esc(s.nat)}</td><td><button data-del="${i}">삭제</button></td></tr>`).join('')}
   </tbody></table></div></div>
+  <div class="card cfg" style="margin-top:16px;padding:14px"><b>Google Sheets 연결</b>
+  <div class="hint">연결하면 입력 내용이 구글 시트에 자동 저장되고, 어느 기기에서 열어도 같은 데이터를 봅니다.</div>
+  <label>웹앱 URL (Apps Script 배포 주소)</label><input id="cUrl" placeholder="https://script.google.com/macros/s/.../exec" value="${esc(cfg.url||'')}">
+  <label>비밀 토큰 (Code.gs의 TOKEN과 동일, 없으면 비워두기)</label><input id="cTok" value="${esc(cfg.token||'')}">
+  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="cSave">연결·저장</button><button id="cPull">시트에서 다시 불러오기</button><button id="cPush">현재 데이터를 시트에 덮어쓰기</button><button id="cOff">연결 해제</button></div>
+  <details><summary>설정 방법</summary><ol>
+    <li>구글 시트를 새로 만든다.</li>
+    <li>메뉴 <b>확장 프로그램 → Apps Script</b>를 열고 저장소의 <code>apps-script/Code.gs</code> 내용을 붙여넣는다. (원하면 <code>TOKEN</code>에 비밀 문자열 입력)</li>
+    <li><b>배포 → 새 배포 → 유형: 웹 앱</b>, 실행 사용자 <b>나</b>, 액세스 권한 <b>모든 사용자</b>로 배포하고 권한을 승인한다.</li>
+    <li>발급된 <code>/exec</code> URL을 위 칸에 붙여넣고 <b>연결·저장</b>을 누른다. 시트가 비어 있으면 현재 데이터가 자동으로 올라간다.</li>
+  </ol><div class="hint">시트의 '직원', '근무기록' 탭이 자동 생성됩니다. 시트에서 직접 수정한 내용은 "시트에서 다시 불러오기"(또는 새로고침)로 반영됩니다.</div></details></div>
   <div class="card" style="margin-top:16px;padding:14px"><b>데이터 백업</b>
   <div class="hint">데이터는 이 브라우저에 저장됩니다. 다른 기기로 옮기거나 보관하려면 백업 파일을 내려받으세요.</div>
   <button id="exp">백업 내려받기 (JSON)</button> <button id="expCsv">이번 달 합계 CSV</button>
@@ -278,8 +354,16 @@ function renderStaff(){
   $('#addBtn').onclick=()=>{$('#grpList').innerHTML=groups().map(g=>`<option value="${esc(g)}">`).join('');$('#dlg').showModal()};
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
     const s=db.staff[b.dataset.del];
-    if(confirm(`${s.name} 직원을 목록에서 삭제할까요? (기존 근무기록은 남지만 집계에는 나타나지 않습니다)`)){db.staff.splice(b.dataset.del,1);save();renderStaff()}
+    if(confirm(`${s.name} 직원을 목록에서 삭제할까요? (기존 근무기록은 남지만 집계에는 나타나지 않습니다)`)){db.staff.splice(b.dataset.del,1);save();markStaff();renderStaff()}
   });
+  $('#cSave').onclick=()=>{
+    const url=$('#cUrl').value.trim();
+    if(!/^https:\/\/script\.google\.com\//.test(url)){alert('Apps Script 웹앱 URL(https://script.google.com/...)을 입력하세요.');return}
+    cfg={url,token:$('#cTok').value.trim()};localStorage.setItem(CFG_KEY,JSON.stringify(cfg));pullFromSheet();
+  };
+  $('#cPull').onclick=()=>{if(!cfg.url)return alert('먼저 연결하세요.');if(confirm('시트 내용으로 현재 화면 데이터를 교체할까요?'))pullFromSheet()};
+  $('#cPush').onclick=async()=>{if(!cfg.url)return alert('먼저 연결하세요.');if(confirm('현재 데이터로 시트 내용을 모두 덮어쓸까요?')){markAll();await flush()}};
+  $('#cOff').onclick=()=>{if(confirm('연결을 해제할까요? (시트 데이터는 그대로 남습니다)')){cfg={};localStorage.removeItem(CFG_KEY);sync.days.clear();sync.staff=sync.all=false;saveDirty();setStatus('off');renderStaff()}};
   $('#exp').onclick=()=>download('hr-backup.json',JSON.stringify(db),'application/json');
   $('#expCsv').onclick=()=>{
     const n=daysIn(view.y,view.m);
@@ -289,7 +373,7 @@ function renderStaff(){
   };
   $('#imp').onchange=e=>{
     const f=e.target.files[0];if(!f)return;
-    f.text().then(t=>{const d=JSON.parse(t);if(!d.staff||!d.rec)throw 0;if(confirm('현재 데이터를 백업 파일 내용으로 덮어쓸까요?')){db=d;save();renderAll()}}).catch(()=>alert('올바른 백업 파일이 아닙니다.'));
+    f.text().then(t=>{const d=JSON.parse(t);if(!d.staff||!d.rec)throw 0;if(confirm('현재 데이터를 백업 파일 내용으로 덮어쓸까요?')){db=d;save();markAll();renderAll()}}).catch(()=>alert('올바른 백업 파일이 아닙니다.'));
   };
 }
 function download(name,text,type){
@@ -300,7 +384,7 @@ $('#addForm').addEventListener('submit',e=>{
   const name=$('#aName').value.trim();
   if(!name||db.staff.some(s=>s.name===name)){alert('이름이 비어있거나 이미 존재합니다.');e.preventDefault();return}
   db.staff.push({name,nat:$('#aNat').value.trim(),grp:$('#aGrp').value.trim(),memo:''});
-  save();e.target.reset();renderStaff();renderCal();renderPanel();
+  save();markStaff();e.target.reset();renderStaff();renderCal();renderPanel();
 });
 
 /* ---------- 공통 ---------- */
@@ -318,7 +402,10 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.
 const shift=k=>{const d=new Date(view.y,view.m+k,1);view={y:d.getFullYear(),m:d.getMonth()};renderAll()};
 $('#prev').onclick=()=>shift(-1);$('#next').onclick=()=>shift(1);
 $('#goToday').onclick=()=>{view={y:now.getFullYear(),m:now.getMonth()};sel=ds(now.getFullYear(),now.getMonth(),now.getDate());renderAll()};
+$('#sstat').onclick=()=>{cfg.url?(sync.days.size||sync.staff||sync.all?flush():pullFromSheet()):(tab='staff',renderAll())};
+setStatus(cfg.url?'busy':'off');
 renderAll();
+pullFromSheet();
 </script>
 </body>
 </html>
