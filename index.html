@@ -188,7 +188,7 @@ const NOW=new Date();
 const TODAY=ymd(NOW.getFullYear(),NOW.getMonth(),NOW.getDate());
 const DEFAULT_STAFF=[['조','태국','상근'],['짙','태국','상근'],['파이','태국','상근'],['짱','베트남','계절'],['유이','베트남','계절'],['푄','태국','예비'],['놈','태국','예비']]
   .map(([name,nat,grp])=>({name,nat,grp,active:true}));
-const DEFAULT_CFG={wageSeasonal:0,wageOther:0,partBase:8,offDays:[],order:['상근','계절','예비'],seasonGroup:'계절',seasonFrom:3,seasonTo:10};
+const DEFAULT_CFG={wageSeasonal:92880,wageOther:100000,partBase:8,offDays:[],order:['상근','계절','예비'],seasonGroup:'계절',seasonFrom:3,seasonTo:10};
 const S={staff:DEFAULT_STAFF.map(p=>({...p})),cfg:{...DEFAULT_CFG},months:{},pays:{}};
 const EMPTY_M={rec:{},note:{},off:{}};
 const monR=ym=>S.months[ym]||EMPTY_M;
@@ -274,7 +274,8 @@ function calc(ym,per){
     r.base=Math.round(r.wage*r.days+r.wage/(+S.cfg.partBase||8)*r.hours);
     const pr=pays[p.name]||{};
     r.allow=Number(pr.allow)||0;r.alba=Number(pr.alba)||0;r.paid=!!pr.paid;r.paidAt=pr.paidAt||'';
-    r.changed=r.paid&&pr.amt!=null&&pr.amt!==r.base;
+    if(r.paid&&pr.fixed!=null)r.base=pr.fixed-r.allow-r.alba;   // 이전 시스템에서 가져온 지급액은 그대로 유지
+    r.changed=r.paid&&pr.fixed==null&&pr.amt!=null&&pr.amt!==r.base;
     r.total=r.base+r.allow+r.alba;
     const act=r.days>0||r.hours>0||r.allow||r.alba||r.paid;
     if(act||(p.active!==false&&groupOpen(p.grp,ym)))rows.push(r);
@@ -455,7 +456,7 @@ function doPay(names,paid){
   if(!rs.length){alert(paid?'지급처리할 대상이 없습니다.':'취소할 대상이 없습니다.');return}
   const sum=rs.reduce((a,r)=>a+r.total,0);
   if(!confirm(`${rs.length}명 · ₩${won(sum)}\n${rs.map(r=>r.p.name).join(', ')}\n\n${paid?'지급 처리할까요?':'지급을 취소할까요?'}`))return;
-  rs.forEach(r=>{const x=payW(ym,pv.per,r.p.name);if(paid){x.paid=true;x.paidAt=TODAY;x.amt=r.base}else{delete x.paid;delete x.paidAt;delete x.amt}});
+  rs.forEach(r=>{const x=payW(ym,pv.per,r.p.name);if(paid){x.paid=true;x.paidAt=TODAY;x.amt=r.base}else{delete x.paid;delete x.paidAt;delete x.amt;delete x.fixed}});
   touch('p:'+ym);pv.sel.clear();renderPay();
 }
 const rowName=e=>e.target.closest('tr[data-n]')?.dataset.n;

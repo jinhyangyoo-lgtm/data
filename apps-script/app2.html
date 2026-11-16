@@ -26,7 +26,8 @@ function calc(ym,per){
     r.base=Math.round(r.wage*r.days+r.wage/(+S.cfg.partBase||8)*r.hours);
     const pr=pays[p.name]||{};
     r.allow=Number(pr.allow)||0;r.alba=Number(pr.alba)||0;r.paid=!!pr.paid;r.paidAt=pr.paidAt||'';
-    r.changed=r.paid&&pr.amt!=null&&pr.amt!==r.base;
+    if(r.paid&&pr.fixed!=null)r.base=pr.fixed-r.allow-r.alba;   // 이전 시스템에서 가져온 지급액은 그대로 유지
+    r.changed=r.paid&&pr.fixed==null&&pr.amt!=null&&pr.amt!==r.base;
     r.total=r.base+r.allow+r.alba;
     const act=r.days>0||r.hours>0||r.allow||r.alba||r.paid;
     if(act||(p.active!==false&&groupOpen(p.grp,ym)))rows.push(r);

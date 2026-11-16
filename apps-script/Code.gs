@@ -46,28 +46,42 @@ function store_() {
   return s;
 }
 
-// 예전 버전('직원', '근무기록' 탭)의 데이터를 새 형식으로 한 번 가져온다.
+// 예전 버전('직원', '근무기록', '일별메모', '급여지급' 탭)의 데이터를 새 형식으로 한 번 가져온다. (원본 탭은 그대로 둔다)
 function migrate_(s) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const st = ss.getSheetByName('직원'), wk = ss.getSheetByName('근무기록');
-  if (!st) return;
-  const T = {'전일': 'full', '반일': 'half', '시간제': 'part'};
-  const staff = st.getDataRange().getDisplayValues().slice(1).filter(r => r[0])
-    .map(r => ({name: r[0], nat: r[1], grp: r[2], active: true}));
-  if (!staff.length) return;
-  const months = {};
-  if (wk) {
-    wk.getDataRange().getDisplayValues().slice(1).forEach(r => {
-      if (!r[0] || !r[1]) return;
-      const ym = r[0].slice(0, 7);
-      const m = months[ym] || (months[ym] = {rec: {}, note: {}, off: {}});
-      (m.rec[r[0]] = m.rec[r[0]] || {})[r[1]] = {t: T[r[2]] || 'full', h: r[3] === '' ? '' : Number(r[3]), m: r[4] || ''};
-    });
-  }
+  const get = n => { const t = ss.getSheetByName(n); return t ? t.getDataRange().getDisplayValues().slice(1) : []; };
+  const docs = legacyDocs_(get('직원'), get('근무기록'), get('일별메모'), get('급여지급'));
   const now = new Date().toISOString();
-  const rows = [['staff', JSON.stringify(staff), now]];
-  Object.keys(months).forEach(ym => rows.push(['m:' + ym, JSON.stringify(months[ym]), now]));
-  s.getRange(2, 1, rows.length, 3).setValues(rows);
+  const rows = Object.keys(docs).map(k => [k, JSON.stringify(docs[k]), now]);
+  if (rows.length) s.getRange(2, 1, rows.length, 3).setValues(rows);
+}
+
+// 순수 함수: 예전 탭의 행들 → {키: 문서}
+function legacyDocs_(staffRows, workRows, memoRows, payRows) {
+  const T = {'전일': 'full', '반일': 'half', '시간제': 'part', '시간': 'part'};
+  const docs = {};
+  const staff = staffRows.filter(r => r[0]).map(r => ({name: r[0], nat: r[1], grp: r[2], active: true}));
+  if (!staff.length) return docs;
+  docs['staff'] = staff;
+  const mon = ym => docs['m:' + ym] || (docs['m:' + ym] = {rec: {}, note: {}, off: {}});
+  workRows.forEach(r => {
+    if (!r[0] || !r[1]) return;
+    (mon(r[0].slice(0, 7)).rec[r[0]] = mon(r[0].slice(0, 7)).rec[r[0]] || {})[r[1]] =
+      {t: T[r[2]] || 'full', h: r[3] === '' || r[3] == null ? '' : Number(r[3]), m: r[4] || ''};
+  });
+  memoRows.forEach(r => {
+    const d = r[0], t = String(r[1] || '').trim();
+    if (!d || !t) return;
+    if (t === '휴무') mon(d.slice(0, 7)).off[d] = true;
+    else mon(d.slice(0, 7)).note[d] = t;
+  });
+  payRows.forEach(r => {   // 기간시작, 기간종료, 이름, 근무일수, 지급액, 지급일, 메모
+    if (!r[0] || !r[2] || !r[5]) return;
+    const ym = r[0].slice(0, 7), per = r[0].slice(8, 10) === '01' ? 'p1' : 'p2';
+    const doc = docs['p:' + ym] || (docs['p:' + ym] = {});
+    (doc[per] = doc[per] || {})[r[2]] = {paid: true, paidAt: r[5], fixed: Number(String(r[4]).replace(/[^0-9.-]/g, '')) || 0};
+  });
+  return docs;
 }
 
 // 화면에서 호출 (google.script.run)

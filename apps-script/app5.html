@@ -42,7 +42,7 @@ function doPay(names,paid){
   if(!rs.length){alert(paid?'지급처리할 대상이 없습니다.':'취소할 대상이 없습니다.');return}
   const sum=rs.reduce((a,r)=>a+r.total,0);
   if(!confirm(`${rs.length}명 · ₩${won(sum)}\n${rs.map(r=>r.p.name).join(', ')}\n\n${paid?'지급 처리할까요?':'지급을 취소할까요?'}`))return;
-  rs.forEach(r=>{const x=payW(ym,pv.per,r.p.name);if(paid){x.paid=true;x.paidAt=TODAY;x.amt=r.base}else{delete x.paid;delete x.paidAt;delete x.amt}});
+  rs.forEach(r=>{const x=payW(ym,pv.per,r.p.name);if(paid){x.paid=true;x.paidAt=TODAY;x.amt=r.base}else{delete x.paid;delete x.paidAt;delete x.amt;delete x.fixed}});
   touch('p:'+ym);pv.sel.clear();renderPay();
 }
 const rowName=e=>e.target.closest('tr[data-n]')?.dataset.n;
