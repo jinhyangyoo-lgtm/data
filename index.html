@@ -25,6 +25,7 @@ input:disabled{opacity:.5}
 .top{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:8px 16px;flex-wrap:wrap}
 .brand{font-weight:700;font-size:16px;display:flex;align-items:center}
 .sync{font-size:12px;font-weight:400;color:var(--mute);margin-left:10px;padding:2px 10px;border-radius:99px;border:1px solid var(--line);background:none}
+.sheetlink{font-size:12px;margin-left:8px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--brand);text-decoration:none;font-weight:600}.sheetlink:hover{background:var(--soft)}
 .sync.ok{color:var(--ok)}.sync.err{color:var(--off);border-color:var(--off)}.sync.busy{color:var(--part)}
 nav{display:flex;gap:4px;margin-left:auto}
 nav button{border:0;background:none;padding:8px 14px;font-weight:600;color:var(--mute)}
@@ -142,7 +143,7 @@ dialog label{display:block;margin:8px 0 2px;font-size:12px;color:var(--mute)}dia
 </head>
 <body>
 <header class="top">
-  <div class="brand">인력관리<button class="sync" id="sync"></button></div>
+  <div class="brand">인력관리<button class="sync" id="sync"></button><a id="sheetlink" class="sheetlink" target="_blank" rel="noopener" hidden>📄 구글 시트 열기</a></div>
   <nav id="nav">
     <button data-tab="cal" class="on">캘린더</button><button data-tab="pay">급여 지급</button>
     <button data-tab="year">연간 현황</button><button data-tab="set">설정</button>
@@ -242,6 +243,7 @@ async function pull(){
   setSync('load');
   try{
     const r=await gs('apiLoad');
+    if(r.url){const a=$('#sheetlink');a.href=r.url;a.hidden=false}
     for(const[k,v]of Object.entries(r.docs)){if(dirty.has(k))continue;try{setDoc(k,JSON.parse(v))}catch(e){}}
     if(!r.docs.staff){touch('staff');touch('cfg')}
     if(dirty.size)flush();else setSync('ok');

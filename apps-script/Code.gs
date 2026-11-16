@@ -90,7 +90,7 @@ function apiLoad() {
   if (n > 1) {
     s.getRange(2, 1, n - 1, 2).getValues().forEach(r => { if (r[0] && r[1]) docs[r[0]] = String(r[1]); });
   }
-  return {docs: docs};
+  return {docs: docs, url: SpreadsheetApp.getActiveSpreadsheet().getUrl()};
 }
 
 function apiSave(changes) {

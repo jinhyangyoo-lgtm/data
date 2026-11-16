@@ -68,6 +68,7 @@ async function pull(){
   setSync('load');
   try{
     const r=await gs('apiLoad');
+    if(r.url){const a=$('#sheetlink');a.href=r.url;a.hidden=false}
     for(const[k,v]of Object.entries(r.docs)){if(dirty.has(k))continue;try{setDoc(k,JSON.parse(v))}catch(e){}}
     if(!r.docs.staff){touch('staff');touch('cfg')}
     if(dirty.size)flush();else setSync('ok');
