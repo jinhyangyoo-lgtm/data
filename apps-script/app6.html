@@ -14,7 +14,7 @@ function yearData(y){
 }
 const KEYS=['days','base','allow','alba','total'];
 function yCell(a,p){
-  if(!a)return`<span class="na">${p&&p.grp===S.cfg.seasonGroup?'비수기':'–'}</span>`;
+  if(!a)return`<span class="na">${p&&p.grp===S.cfg.seasonGroup?'미사용':'–'}</span>`;
   if(yv.mode==='sum')return`<div class="yc"><b class="${a.days?'':'na'}">${a.days?num(a.days)+'일':'–'}</b><small>${a.total?won(a.total):''}</small></div>`;
   const v=a[yv.mode];return v?(yv.mode==='days'?num(v)+'일':won(v)):'<span class="na">–</span>';
 }
@@ -38,7 +38,7 @@ function renderYear(){
   const colT=Array.from({length:12},(_,m)=>data.reduce((s,e)=>{const a=e.mo[m];if(a)KEYS.forEach(k=>s[k]+=a[k]);return s},{days:0,base:0,allow:0,alba:0,total:0}));
   const all=colT.reduce((s,a)=>{KEYS.forEach(k=>s[k]+=a[k]);return s},{days:0,base:0,allow:0,alba:0,total:0});
   $('#v-year').innerHTML=h+`</tbody><tfoot><tr><td class="l c1">월 합계</td>${colT.map(a=>`<td>${yCell(a)}</td>`).join('')}<td class="tt">${yCell(all)}</td></tr></tfoot></table></div>
-   <div class="hint">금액은 근무기록 × 일당 + 수당 + 알바비 기준이며 계절근로는 이용기간(${S.cfg.seasonFrom}~${S.cfg.seasonTo}월) 밖에서 '·'로 표시됩니다.</div>`;
+   <div class="hint">금액은 근무기록 × 일당 + 수당 + 알바비 기준이며 계절근로를 비활성화한 기간은 '미사용'으로 표시됩니다.</div>`;
 }
 $('#v-year').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;

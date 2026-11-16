@@ -17,7 +17,7 @@ const NOW=new Date();
 const TODAY=ymd(NOW.getFullYear(),NOW.getMonth(),NOW.getDate());
 const DEFAULT_STAFF=[['조','태국','상근'],['짙','태국','상근'],['파이','태국','상근'],['짱','베트남','계절'],['유이','베트남','계절'],['푄','태국','예비'],['놈','태국','예비']]
   .map(([name,nat,grp])=>({name,nat,grp,active:true}));
-const DEFAULT_CFG={wageSeasonal:92880,wageOther:100000,partBase:8,offDays:[],order:['상근','계절','예비'],seasonGroup:'계절',seasonFrom:3,seasonTo:10};
+const DEFAULT_CFG={wageSeasonal:92880,wageOther:100000,partBase:8,offDays:[],order:['상근','계절','예비'],seasonGroup:'계절',seasonOn:true};
 const S={staff:DEFAULT_STAFF.map(p=>({...p})),cfg:{...DEFAULT_CFG},months:{},pays:{}};
 const EMPTY_M={rec:{},note:{},off:{}};
 const monR=ym=>S.months[ym]||EMPTY_M;

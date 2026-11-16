@@ -5,8 +5,7 @@ function groups(){
   S.staff.forEach(p=>{if(!o.includes(p.grp))o.push(p.grp)});
   return o.filter(g=>S.staff.some(p=>p.grp===g));
 }
-function inSeason(m1){const a=+S.cfg.seasonFrom,b=+S.cfg.seasonTo;return a<=b?m1>=a&&m1<=b:m1>=a||m1<=b}
-const groupOpen=(g,ym)=>g!==S.cfg.seasonGroup||inSeason(+ym.slice(5,7));
+const groupOpen=g=>g!==S.cfg.seasonGroup||S.cfg.seasonOn!==false;   // 계절근로는 설정의 '활성화' 체크로 켜고 끈다
 function isOff(ds){
   const mo=monR(ds.slice(0,7));
   return ds in mo.off?mo.off[ds]:S.cfg.offDays.includes(dow(ds));

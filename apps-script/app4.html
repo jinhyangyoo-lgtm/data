@@ -28,7 +28,7 @@ function renderPanel(){
     h+=`<section class="grp ${open?'':'closed'}" data-g="${esc(g)}"><div class="gh"><b>${esc(g)}</b><span class="gc">${on}/${mem.length}명</span>
       ${show?`<select data-bt>${['full','half','part'].map(t=>`<option value="${t}" ${t===bt?'selected':''}>${TYPES[t]}</option>`).join('')}</select><button data-gall>전원 출근</button><button data-gnone>해제</button>`:''}
       <button data-gm="-1" ${i?'':'disabled'} title="위로">▲</button><button data-gm="1" ${i<gl.length-1?'':'disabled'} title="아래로">▼</button></div>
-      ${show?mem.map(x=>rowHTML(x,rec[x.name])).join(''):`<div class="hint" style="padding:8px">${esc(g)} 근로는 ${S.cfg.seasonFrom}~${S.cfg.seasonTo}월에만 이용합니다.</div>`}</section>`;
+      ${show?mem.map(x=>rowHTML(x,rec[x.name])).join(''):`<div class="hint" style="padding:8px">${esc(g)} 근로가 비활성화되어 있습니다. 설정에서 '활성화'를 체크하면 입력할 수 있습니다.</div>`}</section>`;
   });
   $('#panel').innerHTML=h;
 }

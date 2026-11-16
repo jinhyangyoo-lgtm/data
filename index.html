@@ -188,7 +188,7 @@ const NOW=new Date();
 const TODAY=ymd(NOW.getFullYear(),NOW.getMonth(),NOW.getDate());
 const DEFAULT_STAFF=[['조','태국','상근'],['짙','태국','상근'],['파이','태국','상근'],['짱','베트남','계절'],['유이','베트남','계절'],['푄','태국','예비'],['놈','태국','예비']]
   .map(([name,nat,grp])=>({name,nat,grp,active:true}));
-const DEFAULT_CFG={wageSeasonal:92880,wageOther:100000,partBase:8,offDays:[],order:['상근','계절','예비'],seasonGroup:'계절',seasonFrom:3,seasonTo:10};
+const DEFAULT_CFG={wageSeasonal:92880,wageOther:100000,partBase:8,offDays:[],order:['상근','계절','예비'],seasonGroup:'계절',seasonOn:true};
 const S={staff:DEFAULT_STAFF.map(p=>({...p})),cfg:{...DEFAULT_CFG},months:{},pays:{}};
 const EMPTY_M={rec:{},note:{},off:{}};
 const monR=ym=>S.months[ym]||EMPTY_M;
@@ -253,8 +253,7 @@ function groups(){
   S.staff.forEach(p=>{if(!o.includes(p.grp))o.push(p.grp)});
   return o.filter(g=>S.staff.some(p=>p.grp===g));
 }
-function inSeason(m1){const a=+S.cfg.seasonFrom,b=+S.cfg.seasonTo;return a<=b?m1>=a&&m1<=b:m1>=a||m1<=b}
-const groupOpen=(g,ym)=>g!==S.cfg.seasonGroup||inSeason(+ym.slice(5,7));
+const groupOpen=g=>g!==S.cfg.seasonGroup||S.cfg.seasonOn!==false;   // 계절근로는 설정의 '활성화' 체크로 켜고 끈다
 function isOff(ds){
   const mo=monR(ds.slice(0,7));
   return ds in mo.off?mo.off[ds]:S.cfg.offDays.includes(dow(ds));
@@ -368,7 +367,7 @@ function renderPanel(){
     h+=`<section class="grp ${open?'':'closed'}" data-g="${esc(g)}"><div class="gh"><b>${esc(g)}</b><span class="gc">${on}/${mem.length}명</span>
       ${show?`<select data-bt>${['full','half','part'].map(t=>`<option value="${t}" ${t===bt?'selected':''}>${TYPES[t]}</option>`).join('')}</select><button data-gall>전원 출근</button><button data-gnone>해제</button>`:''}
       <button data-gm="-1" ${i?'':'disabled'} title="위로">▲</button><button data-gm="1" ${i<gl.length-1?'':'disabled'} title="아래로">▼</button></div>
-      ${show?mem.map(x=>rowHTML(x,rec[x.name])).join(''):`<div class="hint" style="padding:8px">${esc(g)} 근로는 ${S.cfg.seasonFrom}~${S.cfg.seasonTo}월에만 이용합니다.</div>`}</section>`;
+      ${show?mem.map(x=>rowHTML(x,rec[x.name])).join(''):`<div class="hint" style="padding:8px">${esc(g)} 근로가 비활성화되어 있습니다. 설정에서 '활성화'를 체크하면 입력할 수 있습니다.</div>`}</section>`;
   });
   $('#panel').innerHTML=h;
 }
@@ -494,7 +493,7 @@ function yearData(y){
 }
 const KEYS=['days','base','allow','alba','total'];
 function yCell(a,p){
-  if(!a)return`<span class="na">${p&&p.grp===S.cfg.seasonGroup?'비수기':'–'}</span>`;
+  if(!a)return`<span class="na">${p&&p.grp===S.cfg.seasonGroup?'미사용':'–'}</span>`;
   if(yv.mode==='sum')return`<div class="yc"><b class="${a.days?'':'na'}">${a.days?num(a.days)+'일':'–'}</b><small>${a.total?won(a.total):''}</small></div>`;
   const v=a[yv.mode];return v?(yv.mode==='days'?num(v)+'일':won(v)):'<span class="na">–</span>';
 }
@@ -518,7 +517,7 @@ function renderYear(){
   const colT=Array.from({length:12},(_,m)=>data.reduce((s,e)=>{const a=e.mo[m];if(a)KEYS.forEach(k=>s[k]+=a[k]);return s},{days:0,base:0,allow:0,alba:0,total:0}));
   const all=colT.reduce((s,a)=>{KEYS.forEach(k=>s[k]+=a[k]);return s},{days:0,base:0,allow:0,alba:0,total:0});
   $('#v-year').innerHTML=h+`</tbody><tfoot><tr><td class="l c1">월 합계</td>${colT.map(a=>`<td>${yCell(a)}</td>`).join('')}<td class="tt">${yCell(all)}</td></tr></tfoot></table></div>
-   <div class="hint">금액은 근무기록 × 일당 + 수당 + 알바비 기준이며 계절근로는 이용기간(${S.cfg.seasonFrom}~${S.cfg.seasonTo}월) 밖에서 '·'로 표시됩니다.</div>`;
+   <div class="hint">금액은 근무기록 × 일당 + 수당 + 알바비 기준이며 계절근로를 비활성화한 기간은 '미사용'으로 표시됩니다.</div>`;
 }
 $('#v-year').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
@@ -534,8 +533,7 @@ $('#v-year').addEventListener('change',e=>{if(e.target.id==='paidOnly'){yv.paidO
 <script>
 /* ===== 7. 설정 · 직원 · 백업 ===== */
 function renderSettings(){
-  const c=S.cfg,gl=groups(),months=Array.from({length:12},(_,i)=>i+1);
-  const mo=(k)=>`<select data-cfg="${k}">${months.map(m=>`<option value="${m}" ${+c[k]===m?'selected':''}>${m}월</option>`).join('')}</select>`;
+  const c=S.cfg,gl=groups();
   $('#v-set').innerHTML=`<div class="set">
   <div class="card"><h3>급여 기준</h3>
    <div class="f"><label>계절근로 일당(원)</label><input data-cfg="wageSeasonal" data-n inputmode="numeric" value="${c.wageSeasonal||''}"></div>
@@ -545,7 +543,7 @@ function renderSettings(){
   <div class="card"><h3>휴무일 · 계절근로</h3>
    <div class="f"><label>정기 휴무 요일</label><div class="days">${DOW.map((d,i)=>`<label><input type="checkbox" data-off="${i}" ${c.offDays.includes(i)?'checked':''}>${d}</label>`).join('')}</div></div>
    <div class="f"><label>계절근로 그룹</label><select data-cfg="seasonGroup">${gl.map(g=>`<option ${g===c.seasonGroup?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
-   <div class="f"><label>이용 기간</label><div style="display:flex;gap:6px;align-items:center">${mo('seasonFrom')} ~ ${mo('seasonTo')}</div></div>
+   <div class="f"><label>계절근로 활성화</label><label style="color:var(--ink)"><input type="checkbox" data-seas ${c.seasonOn!==false?'checked':''}> 사용 (체크 해제 시 입력 잠금·급여 대상 제외)</label></div>
    <div class="hint">특정 날짜만 휴무로 바꾸려면 캘린더에서 날짜를 선택해 '휴무일로 지정'을 누르세요.</div></div>
   <div class="card"><h3>그룹 표시 순서</h3>${gl.map((g,i)=>`<div class="gl"><span>${esc(g)}</span><button data-gm="${g}|-1" ${i?'':'disabled'}>▲</button><button data-gm="${g}|1" ${i<gl.length-1?'':'disabled'}>▼</button></div>`).join('')}</div>
   <div class="card"><h3>데이터</h3><div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -563,6 +561,7 @@ function renderSettings(){
 $('#v-set').addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.cfg){const k=t.dataset.cfg;S.cfg[k]=t.hasAttribute('data-n')?parseAmt(t.value):isNaN(t.value)?t.value:+t.value;touch('cfg');renderSettings()}
+  else if(t.hasAttribute('data-seas')){S.cfg.seasonOn=t.checked;touch('cfg');renderSettings()}
   else if(t.hasAttribute('data-off')){const s=new Set(S.cfg.offDays);t.checked?s.add(+t.dataset.off):s.delete(+t.dataset.off);S.cfg.offDays=[...s].sort();touch('cfg')}
   else if(t.dataset.sf){
     const p=S.staff[t.closest('tr').dataset.i],f=t.dataset.sf;

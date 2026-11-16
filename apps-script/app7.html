@@ -1,8 +1,7 @@
 <script>
 /* ===== 7. 설정 · 직원 · 백업 ===== */
 function renderSettings(){
-  const c=S.cfg,gl=groups(),months=Array.from({length:12},(_,i)=>i+1);
-  const mo=(k)=>`<select data-cfg="${k}">${months.map(m=>`<option value="${m}" ${+c[k]===m?'selected':''}>${m}월</option>`).join('')}</select>`;
+  const c=S.cfg,gl=groups();
   $('#v-set').innerHTML=`<div class="set">
   <div class="card"><h3>급여 기준</h3>
    <div class="f"><label>계절근로 일당(원)</label><input data-cfg="wageSeasonal" data-n inputmode="numeric" value="${c.wageSeasonal||''}"></div>
@@ -12,7 +11,7 @@ function renderSettings(){
   <div class="card"><h3>휴무일 · 계절근로</h3>
    <div class="f"><label>정기 휴무 요일</label><div class="days">${DOW.map((d,i)=>`<label><input type="checkbox" data-off="${i}" ${c.offDays.includes(i)?'checked':''}>${d}</label>`).join('')}</div></div>
    <div class="f"><label>계절근로 그룹</label><select data-cfg="seasonGroup">${gl.map(g=>`<option ${g===c.seasonGroup?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
-   <div class="f"><label>이용 기간</label><div style="display:flex;gap:6px;align-items:center">${mo('seasonFrom')} ~ ${mo('seasonTo')}</div></div>
+   <div class="f"><label>계절근로 활성화</label><label style="color:var(--ink)"><input type="checkbox" data-seas ${c.seasonOn!==false?'checked':''}> 사용 (체크 해제 시 입력 잠금·급여 대상 제외)</label></div>
    <div class="hint">특정 날짜만 휴무로 바꾸려면 캘린더에서 날짜를 선택해 '휴무일로 지정'을 누르세요.</div></div>
   <div class="card"><h3>그룹 표시 순서</h3>${gl.map((g,i)=>`<div class="gl"><span>${esc(g)}</span><button data-gm="${g}|-1" ${i?'':'disabled'}>▲</button><button data-gm="${g}|1" ${i<gl.length-1?'':'disabled'}>▼</button></div>`).join('')}</div>
   <div class="card"><h3>데이터</h3><div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -30,6 +29,7 @@ function renderSettings(){
 $('#v-set').addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.cfg){const k=t.dataset.cfg;S.cfg[k]=t.hasAttribute('data-n')?parseAmt(t.value):isNaN(t.value)?t.value:+t.value;touch('cfg');renderSettings()}
+  else if(t.hasAttribute('data-seas')){S.cfg.seasonOn=t.checked;touch('cfg');renderSettings()}
   else if(t.hasAttribute('data-off')){const s=new Set(S.cfg.offDays);t.checked?s.add(+t.dataset.off):s.delete(+t.dataset.off);S.cfg.offDays=[...s].sort();touch('cfg')}
   else if(t.dataset.sf){
     const p=S.staff[t.closest('tr').dataset.i],f=t.dataset.sf;
