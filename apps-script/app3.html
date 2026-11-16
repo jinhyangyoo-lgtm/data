@@ -22,12 +22,14 @@ function renderCal(){
     const c={full:0,half:0,part:0};who.forEach(p=>c[rec[p.name].t]++);
     const pd=!other&&(d.getDate()===15?P1:d.getDate()===n?P2:null);
     const chips=who.slice(0,7).map(p=>{const x=rec[p.name];
-      return`<div class="chip ${x.t}" title="${esc(p.name)} ${TYPES[x.t]}${x.m?' · '+esc(x.m):''}">${esc(p.name)}${x.t==='half'?' 반':x.t==='part'?' '+(x.h?x.h+'h':'시'):''}${x.m?' 📝':''}</div>`}).join('')+(who.length>7?`<div class="chip more">+${who.length-7}명</div>`:'');
-    const off=isOff(ds);
+      return`<div class="chip ${x.t}" title="${esc(p.name)} ${TYPES[x.t]}${x.m?' · '+esc(x.m):''}">${esc(p.name)}${x.t==='half'?' 반':x.t==='part'?' '+(x.h?x.h+'h':'시'):''}</div>`}).join('')+(who.length>7?`<div class="chip more">+${who.length-7}명</div>`:'');
+    const off=isOff(ds),note=monR(ds.slice(0,7)).note[ds]||'',memos=who.filter(p=>rec[p.name].m);
     h+=`<div class="day ${other?'other':''} ${ds===TODAY?'today':''} ${ds===sel?'sel':''} ${off?'off':''} ${pd?'payday':''} ${w===0?'sun':w===6?'sat':''}" data-d="${ds}">
-     <div class="dh"><span class="num">${d.getDate()}</span>${off?'<span class="tag off">휴무</span>':''}</div>
+     <div class="dh"><span class="num">${d.getDate()}</span>${off?'<span class="tag off">휴무</span>':''}${note||memos.length?'<span class="mk" title="메모 있음">📝</span>':''}</div>
      <div class="cnt">${['full','half','part'].map(t=>c[t]?`<i class="${t}">${SHORT[t]} ${c[t]}</i>`:'').join('')}</div>
      <div class="chips">${chips}</div>
+     ${note?`<div class="dn" title="${esc(note)}">${esc(note)}</div>`:''}
+     ${memos.slice(0,2).map(p=>`<div class="pm" title="${esc(p.name)}: ${esc(rec[p.name].m)}">${esc(p.name)}: ${esc(rec[p.name].m)}</div>`).join('')}${memos.length>2?`<div class="pm">외 메모 ${memos.length-2}건</div>`:''}
      ${pd?`<div class="paytag ${pd.t.n&&pd.t.pn===pd.t.n?'done':''}">💰 <span class="pf">급여일 ₩${won(pd.t.total)}</span><span class="ps">${short(pd.t.total)}</span><small>${!pd.t.n?'지급 대상 없음':pd.t.pn===pd.t.n?'✔ 지급완료':`미지급 ${pd.t.n-pd.t.pn}/${pd.t.n}명`}</small></div>`:''}
     </div>`;
   }

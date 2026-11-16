@@ -65,12 +65,15 @@ main{max-width:1320px;margin:0 auto;padding:14px 16px 48px}
 .chips{display:flex;flex-direction:column;gap:2px;min-width:0}
 .chip{font-size:11px;padding:0 5px;border-radius:4px;border-left:3px solid currentColor;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chip.more{border:0;color:var(--mute);background:none}
+.dn{font-size:11px;line-height:1.35;color:var(--ink);background:var(--pay-bg);border-radius:4px;padding:1px 5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all}
+.pm{font-size:10.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk{display:none;font-size:11px;margin-left:auto}
 .paytag{margin-top:auto;font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--pay-bg);color:var(--pay);border:1px solid #eab308}
 .paytag.done{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
 .paytag small{display:block;font-weight:500}.paytag .ps{display:none}
 .day.payday{box-shadow:inset 0 3px 0 #eab308}
 @media(max-width:1000px){.calwrap{grid-template-columns:1fr}.kpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.paytag small,.paytag .pf{display:none}.paytag .ps{display:inline}.paytag{padding:1px 3px;font-size:10px}.chips{display:none}.day{min-height:78px}.legend{margin-left:0}nav{margin-left:0;width:100%;overflow-x:auto}.brand{width:100%}}
+@media(max-width:640px){.mk{display:inline}.dn,.pm{display:none}.paytag small,.paytag .pf{display:none}.paytag .ps{display:inline}.paytag{padding:1px 3px;font-size:10px}.chips{display:none}.day{min-height:78px}.legend{margin-left:0}nav{margin-left:0;width:100%;overflow-x:auto}.brand{width:100%}}
 </style>
 <style>
 .side{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto;padding:12px}
@@ -317,12 +320,14 @@ function renderCal(){
     const c={full:0,half:0,part:0};who.forEach(p=>c[rec[p.name].t]++);
     const pd=!other&&(d.getDate()===15?P1:d.getDate()===n?P2:null);
     const chips=who.slice(0,7).map(p=>{const x=rec[p.name];
-      return`<div class="chip ${x.t}" title="${esc(p.name)} ${TYPES[x.t]}${x.m?' · '+esc(x.m):''}">${esc(p.name)}${x.t==='half'?' 반':x.t==='part'?' '+(x.h?x.h+'h':'시'):''}${x.m?' 📝':''}</div>`}).join('')+(who.length>7?`<div class="chip more">+${who.length-7}명</div>`:'');
-    const off=isOff(ds);
+      return`<div class="chip ${x.t}" title="${esc(p.name)} ${TYPES[x.t]}${x.m?' · '+esc(x.m):''}">${esc(p.name)}${x.t==='half'?' 반':x.t==='part'?' '+(x.h?x.h+'h':'시'):''}</div>`}).join('')+(who.length>7?`<div class="chip more">+${who.length-7}명</div>`:'');
+    const off=isOff(ds),note=monR(ds.slice(0,7)).note[ds]||'',memos=who.filter(p=>rec[p.name].m);
     h+=`<div class="day ${other?'other':''} ${ds===TODAY?'today':''} ${ds===sel?'sel':''} ${off?'off':''} ${pd?'payday':''} ${w===0?'sun':w===6?'sat':''}" data-d="${ds}">
-     <div class="dh"><span class="num">${d.getDate()}</span>${off?'<span class="tag off">휴무</span>':''}</div>
+     <div class="dh"><span class="num">${d.getDate()}</span>${off?'<span class="tag off">휴무</span>':''}${note||memos.length?'<span class="mk" title="메모 있음">📝</span>':''}</div>
      <div class="cnt">${['full','half','part'].map(t=>c[t]?`<i class="${t}">${SHORT[t]} ${c[t]}</i>`:'').join('')}</div>
      <div class="chips">${chips}</div>
+     ${note?`<div class="dn" title="${esc(note)}">${esc(note)}</div>`:''}
+     ${memos.slice(0,2).map(p=>`<div class="pm" title="${esc(p.name)}: ${esc(rec[p.name].m)}">${esc(p.name)}: ${esc(rec[p.name].m)}</div>`).join('')}${memos.length>2?`<div class="pm">외 메모 ${memos.length-2}건</div>`:''}
      ${pd?`<div class="paytag ${pd.t.n&&pd.t.pn===pd.t.n?'done':''}">💰 <span class="pf">급여일 ₩${won(pd.t.total)}</span><span class="ps">${short(pd.t.total)}</span><small>${!pd.t.n?'지급 대상 없음':pd.t.pn===pd.t.n?'✔ 지급완료':`미지급 ${pd.t.n-pd.t.pn}/${pd.t.n}명`}</small></div>`:''}
     </div>`;
   }
@@ -405,7 +410,7 @@ $('#panel').addEventListener('click',e=>{
 $('#panel').addEventListener('change',e=>{if(e.target.hasAttribute('data-bt'))bulk[e.target.closest('.grp').dataset.g]=e.target.value});
 $('#panel').addEventListener('input',e=>{
   const t=e.target;
-  if(t.id==='dnote'){const mo=monW(curYm());if(t.value.trim())mo.note[sel]=t.value;else delete mo.note[sel];touch('m:'+curYm());return}
+  if(t.id==='dnote'){const mo=monW(curYm());if(t.value.trim())mo.note[sel]=t.value;else delete mo.note[sel];touch('m:'+curYm());renderCal();return}
   const row=t.closest('.prow'),f=t.dataset.f;if(!row||!f)return;
   const x=curRec()[row.dataset.n];if(!x)return;
   x[f]=t.value;touch('m:'+curYm());renderCal();

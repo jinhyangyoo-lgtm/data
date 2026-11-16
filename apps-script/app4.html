@@ -66,7 +66,7 @@ $('#panel').addEventListener('click',e=>{
 $('#panel').addEventListener('change',e=>{if(e.target.hasAttribute('data-bt'))bulk[e.target.closest('.grp').dataset.g]=e.target.value});
 $('#panel').addEventListener('input',e=>{
   const t=e.target;
-  if(t.id==='dnote'){const mo=monW(curYm());if(t.value.trim())mo.note[sel]=t.value;else delete mo.note[sel];touch('m:'+curYm());return}
+  if(t.id==='dnote'){const mo=monW(curYm());if(t.value.trim())mo.note[sel]=t.value;else delete mo.note[sel];touch('m:'+curYm());renderCal();return}
   const row=t.closest('.prow'),f=t.dataset.f;if(!row||!f)return;
   const x=curRec()[row.dataset.n];if(!x)return;
   x[f]=t.value;touch('m:'+curYm());renderCal();
