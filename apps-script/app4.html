@@ -1,0 +1,75 @@
+<script>
+/* ===== 4. 일별 근무 입력 패널 ===== */
+const bulk={};
+const curYm=()=>sel.slice(0,7);
+const curRec=()=>monR(curYm()).rec[sel]||{};
+function setRec(name,t){
+  const mo=monW(curYm()),rec=mo.rec[sel]||(mo.rec[sel]={}),old=rec[name];
+  if(t)rec[name]={t,h:t==='part'&&old?old.h||'':'',m:old?old.m||'':''};else delete rec[name];
+  if(!Object.keys(rec).length)delete mo.rec[sel];
+  touch('m:'+curYm());
+}
+function rowHTML(p,x){
+  return`<div class="prow ${x?'on':''}" data-n="${esc(p.name)}"><div class="pn"><b>${esc(p.name)}</b><small>${esc(p.nat||'')}</small></div>
+  <div class="seg">${['full','half','part'].map(t=>`<button data-t="${t}" class="${x&&x.t===t?'on':''}">${TYPES[t]}</button>`).join('')}</div>
+  <input class="hrs ${x&&x.t==='part'?'':'hide'}" data-f="h" type="number" min="0" max="24" step="0.5" placeholder="시간" value="${x&&x.h||''}">
+  <button class="x ${x?'':'hide'}" data-t="" title="출근 해제">✕</button>
+  <input class="memo ${x?'':'hide'}" data-f="m" placeholder="메모 (선택)" value="${esc(x&&x.m)}"></div>`;
+}
+function renderPanel(){
+  const p=parse(sel),ym=curYm(),rec=curRec(),off=isOff(sel),note=monR(ym).note[sel]||'',gl=groups();
+  let h=`<div class="phead"><button class="pm" data-pd="-1">‹</button><div><b>${p.m+1}월 ${p.d}일 (${DOW[dow(sel)]})</b><small>출근 ${Object.keys(rec).length}명</small></div><button class="pm" data-pd="1">›</button>
+   <button class="offbtn ${off?'on':''}" data-off>${off?'휴무일 해제':'휴무일로 지정'}</button></div>
+   <div class="ptools"><button data-copy>어제와 동일하게</button><button data-clear>전체 해제</button></div>
+   <textarea id="dnote" rows="1" placeholder="이 날의 공통 메모">${esc(note)}</textarea>`;
+  gl.forEach((g,i)=>{
+    const open=groupOpen(g,ym),mem=S.staff.filter(x=>x.grp===g&&(x.active!==false||rec[x.name])),show=open||mem.some(x=>rec[x.name]);
+    const bt=bulk[g]||'full',on=mem.filter(x=>rec[x.name]).length;
+    h+=`<section class="grp ${open?'':'closed'}" data-g="${esc(g)}"><div class="gh"><b>${esc(g)}</b><span class="gc">${on}/${mem.length}명</span>
+      ${show?`<select data-bt>${['full','half','part'].map(t=>`<option value="${t}" ${t===bt?'selected':''}>${TYPES[t]}</option>`).join('')}</select><button data-gall>전원 출근</button><button data-gnone>해제</button>`:''}
+      <button data-gm="-1" ${i?'':'disabled'} title="위로">▲</button><button data-gm="1" ${i<gl.length-1?'':'disabled'} title="아래로">▼</button></div>
+      ${show?mem.map(x=>rowHTML(x,rec[x.name])).join(''):`<div class="hint" style="padding:8px">${esc(g)} 근로는 ${S.cfg.seasonFrom}~${S.cfg.seasonTo}월에만 이용합니다.</div>`}</section>`;
+  });
+  $('#panel').innerHTML=h;
+}
+function moveGroup(g,d){
+  const a=groups(),i=a.indexOf(g),j=i+d;if(j<0||j>=a.length)return;
+  [a[i],a[j]]=[a[j],a[i]];S.cfg.order=a;touch('cfg');renderPanel();if(tab==='set')renderSettings();
+}
+function setOff(){
+  const mo=monW(curYm()),def=S.cfg.offDays.includes(dow(sel)),v=!isOff(sel);
+  if(v===def)delete mo.off[sel];else mo.off[sel]=v;touch('m:'+curYm());
+}
+function copyPrev(){
+  const p=parse(sel),d=new Date(p.y,p.m,p.d-1),ds=ymd(d.getFullYear(),d.getMonth(),d.getDate());
+  const src=monR(ds.slice(0,7)).rec[ds]||{};
+  if(!Object.keys(src).length){alert('전날 근무 기록이 없습니다.');return}
+  const mo=monW(curYm());mo.rec[sel]={};
+  S.staff.forEach(x=>{if(src[x.name]&&groupOpen(x.grp,curYm()))mo.rec[sel][x.name]={...src[x.name]}});
+  if(!Object.keys(mo.rec[sel]).length)delete mo.rec[sel];touch('m:'+curYm());
+}
+function shiftSel(k){const p=parse(sel),d=new Date(p.y,p.m,p.d+k);sel=ymd(d.getFullYear(),d.getMonth(),d.getDate());view={y:d.getFullYear(),m:d.getMonth()}}
+$('#panel').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const row=b.closest('.prow'),g=b.closest('.grp')?.dataset.g;
+  if(row&&b.hasAttribute('data-t')){const t=b.dataset.t,cur=curRec()[row.dataset.n];setRec(row.dataset.n,!t||(cur&&cur.t===t)?null:t)}
+  else if(b.dataset.pd)shiftSel(+b.dataset.pd);
+  else if(b.hasAttribute('data-off'))setOff();
+  else if(b.hasAttribute('data-copy'))copyPrev();
+  else if(b.hasAttribute('data-clear')){const mo=monW(curYm());delete mo.rec[sel];touch('m:'+curYm())}
+  else if(b.dataset.gm){moveGroup(g,+b.dataset.gm);return}
+  else if(b.hasAttribute('data-gall')){const rec=curRec();S.staff.filter(x=>x.grp===g&&x.active!==false&&!rec[x.name]).forEach(x=>setRec(x.name,bulk[g]||'full'))}
+  else if(b.hasAttribute('data-gnone')){S.staff.filter(x=>x.grp===g).forEach(x=>setRec(x.name,null))}
+  else return;
+  renderCal();renderPanel();
+});
+$('#panel').addEventListener('change',e=>{if(e.target.hasAttribute('data-bt'))bulk[e.target.closest('.grp').dataset.g]=e.target.value});
+$('#panel').addEventListener('input',e=>{
+  const t=e.target;
+  if(t.id==='dnote'){const mo=monW(curYm());if(t.value.trim())mo.note[sel]=t.value;else delete mo.note[sel];touch('m:'+curYm());return}
+  const row=t.closest('.prow'),f=t.dataset.f;if(!row||!f)return;
+  const x=curRec()[row.dataset.n];if(!x)return;
+  x[f]=t.value;touch('m:'+curYm());renderCal();
+});
+</script>
+<script>'END-OF-app4';</script>

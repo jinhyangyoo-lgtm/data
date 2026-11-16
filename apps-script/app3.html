@@ -1,0 +1,45 @@
+<script>
+/* ===== 3. 캘린더 ===== */
+let view={y:NOW.getFullYear(),m:NOW.getMonth()},sel=TODAY,tab='cal';
+const short=n=>n>=10000?(Math.round(n/1000)/10)+'만':won(n);
+function renderKpi(P1,P2){
+  const ym=P1.ym,stat=t=>!t.n?'<em>대상 없음</em>':t.pn===t.n?'<em class="ok">지급완료</em>':`<em class="wait">미지급 ${t.n-t.pn}명</em>`;
+  const tot={total:P1.t.total+P2.t.total,paid:P1.t.paid+P2.t.paid,unpaid:P1.t.unpaid+P2.t.unpaid,days:P1.t.days+P2.t.days};
+  const head=(P)=>`<small>${view.m+1}/${P.payDay} 지급분 (${P.from}~${P.to}일)</small><b>₩${won(P.t.total)}</b>${stat(P.t)}`;
+  $('#kpi').innerHTML=`<button class="k card" data-go="1">${head(P1)}</button><button class="k card" data-go="2">${head(P2)}</button>
+   <button class="k card" data-go="1"><small>이번 달 총 지급액</small><b>₩${won(tot.total)}</b><em class="ok">완료 ${won(tot.paid)}</em><em class="wait">미지급 ${won(tot.unpaid)}</em></button>
+   <div class="k card" style="cursor:default"><small>이번 달 환산 근무일 합계</small><b>${num(tot.days)}일</b></div>`;
+}
+function renderCal(){
+  const{y,m}=view,ym=ymk(y,m),P1=calc(ym,1),P2=calc(ym,2),n=dim(y,m);
+  $('#title').textContent=`${y}년 ${m+1}월`;
+  renderKpi(P1,P2);
+  const first=new Date(y,m,1).getDay(),total=Math.ceil((first+n)/7)*7;
+  let h=DOW.map(d=>`<div class="dw">${d}</div>`).join('');
+  for(let i=0;i<total;i++){
+    const d=new Date(y,m,1-first+i),ds=ymd(d.getFullYear(),d.getMonth(),d.getDate()),other=d.getMonth()!==m;
+    const rec=monR(ds.slice(0,7)).rec[ds]||{},who=S.staff.filter(p=>rec[p.name]),w=d.getDay();
+    const c={full:0,half:0,part:0};who.forEach(p=>c[rec[p.name].t]++);
+    const pd=!other&&(d.getDate()===15?P1:d.getDate()===n?P2:null);
+    const chips=who.slice(0,7).map(p=>{const x=rec[p.name];
+      return`<div class="chip ${x.t}" title="${esc(p.name)} ${TYPES[x.t]}${x.m?' · '+esc(x.m):''}">${esc(p.name)}${x.t==='half'?' 반':x.t==='part'?' '+(x.h?x.h+'h':'시'):''}${x.m?' 📝':''}</div>`}).join('')+(who.length>7?`<div class="chip more">+${who.length-7}명</div>`:'');
+    const off=isOff(ds);
+    h+=`<div class="day ${other?'other':''} ${ds===TODAY?'today':''} ${ds===sel?'sel':''} ${off?'off':''} ${pd?'payday':''} ${w===0?'sun':w===6?'sat':''}" data-d="${ds}">
+     <div class="dh"><span class="num">${d.getDate()}</span>${off?'<span class="tag off">휴무</span>':''}</div>
+     <div class="cnt">${['full','half','part'].map(t=>c[t]?`<i class="${t}">${SHORT[t]} ${c[t]}</i>`:'').join('')}</div>
+     <div class="chips">${chips}</div>
+     ${pd?`<div class="paytag ${pd.t.n&&pd.t.pn===pd.t.n?'done':''}">💰 <span class="pf">급여일 ₩${won(pd.t.total)}</span><span class="ps">${short(pd.t.total)}</span><small>${!pd.t.n?'지급 대상 없음':pd.t.pn===pd.t.n?'✔ 지급완료':`미지급 ${pd.t.n-pd.t.pn}/${pd.t.n}명`}</small></div>`:''}
+    </div>`;
+  }
+  $('#cal').innerHTML=h;
+}
+$('#cal').addEventListener('click',e=>{
+  const c=e.target.closest('.day');if(!c)return;
+  sel=c.dataset.d;const p=parse(sel);
+  if(p.y!==view.y||p.m!==view.m)view={y:p.y,m:p.m};
+  renderCal();renderPanel();
+  if(innerWidth<1000)$('#panel').scrollIntoView({behavior:'smooth',block:'start'});
+});
+$('#kpi').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b){pv.per=+b.dataset.go;setTab('pay')}});
+</script>
+<script>'END-OF-app3';</script>

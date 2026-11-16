@@ -1,0 +1,29 @@
+<script>
+/* ===== 8. 화면 전환 · 초기화 ===== */
+function setTab(t){tab=t;renderAll()}
+function renderAll(){
+  for(const t of['cal','pay','year','set'])$('#v-'+t).hidden=t!==tab;
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  $('#bar').hidden=tab==='set';$('#legend').hidden=tab!=='cal';
+  if(tab==='cal'){renderCal();renderPanel()}else if(tab==='pay')renderPay();else if(tab==='year')renderYear();else renderSettings();
+}
+function step(k){
+  if(tab==='year')view.y+=k;
+  else{const d=new Date(view.y,view.m+k,1);view={y:d.getFullYear(),m:d.getMonth()};
+    sel=view.y===NOW.getFullYear()&&view.m===NOW.getMonth()?TODAY:ymd(view.y,view.m,1);pv.sel.clear()}
+  renderAll();
+}
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.tab)};
+$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
+$('#today').onclick=()=>{view={y:NOW.getFullYear(),m:NOW.getMonth()};sel=TODAY;renderAll()};
+$('#sync').onclick=()=>{if(!HOSTED)return;dirty.size?flush():pull().then(renderAll)};
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){cacheNow();flush()}
+  else if(HOSTED&&!dirty.size&&!flushing)pull().then(()=>{if(!document.activeElement||!/INPUT|TEXTAREA/.test(document.activeElement.tagName))renderAll()});
+});
+loadLocal();
+setSync(HOSTED?'load':'local');
+renderAll();
+pull().then(renderAll);
+</script>
+<script>'END-OF-app8';</script>

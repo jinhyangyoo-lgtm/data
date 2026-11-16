@@ -1,0 +1,74 @@
+<script>
+/* ===== 7. 설정 · 직원 · 백업 ===== */
+function renderSettings(){
+  const c=S.cfg,gl=groups(),months=Array.from({length:12},(_,i)=>i+1);
+  const mo=(k)=>`<select data-cfg="${k}">${months.map(m=>`<option value="${m}" ${+c[k]===m?'selected':''}>${m}월</option>`).join('')}</select>`;
+  $('#v-set').innerHTML=`<div class="set">
+  <div class="card"><h3>급여 기준</h3>
+   <div class="f"><label>계절근로 일당(원)</label><input data-cfg="wageSeasonal" data-n inputmode="numeric" value="${c.wageSeasonal||''}"></div>
+   <div class="f"><label>그 외 일당(원)</label><input data-cfg="wageOther" data-n inputmode="numeric" value="${c.wageOther||''}"></div>
+   <div class="f"><label>시간제 환산 기준</label><input data-cfg="partBase" data-n inputmode="numeric" value="${c.partBase}"></div>
+   <div class="hint">전일 1일, 반일 0.5일로 계산하고 시간제는 일당 ÷ 기준시간 × 근무시간으로 계산합니다. 사람별 일당은 아래 직원 표에서 따로 지정할 수 있습니다.</div></div>
+  <div class="card"><h3>휴무일 · 계절근로</h3>
+   <div class="f"><label>정기 휴무 요일</label><div class="days">${DOW.map((d,i)=>`<label><input type="checkbox" data-off="${i}" ${c.offDays.includes(i)?'checked':''}>${d}</label>`).join('')}</div></div>
+   <div class="f"><label>계절근로 그룹</label><select data-cfg="seasonGroup">${gl.map(g=>`<option ${g===c.seasonGroup?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+   <div class="f"><label>이용 기간</label><div style="display:flex;gap:6px;align-items:center">${mo('seasonFrom')} ~ ${mo('seasonTo')}</div></div>
+   <div class="hint">특정 날짜만 휴무로 바꾸려면 캘린더에서 날짜를 선택해 '휴무일로 지정'을 누르세요.</div></div>
+  <div class="card"><h3>그룹 표시 순서</h3>${gl.map((g,i)=>`<div class="gl"><span>${esc(g)}</span><button data-gm="${g}|-1" ${i?'':'disabled'}>▲</button><button data-gm="${g}|1" ${i<gl.length-1?'':'disabled'}>▼</button></div>`).join('')}</div>
+  <div class="card"><h3>데이터</h3><div style="display:flex;gap:8px;flex-wrap:wrap">
+   <button id="bk">백업 내려받기 (JSON)</button><label class="hint" style="margin:0">복원 <input type="file" id="rs" accept=".json"></label>
+   ${HOSTED?'<button id="xs">구글 시트로 내보내기</button>':''}</div>
+   <div class="hint">${HOSTED?'데이터는 구글 시트의 \'데이터\' 탭에 자동 저장됩니다. 내보내기는 보기 좋은 표(내보내기_근무 / 내보내기_급여 탭)를 새로 만듭니다.':'지금은 이 브라우저에만 저장됩니다.'}</div></div>
+  <div class="card" style="grid-column:1/-1"><h3>직원 <button class="pri" id="addBtn" style="float:right;padding:3px 12px">+ 추가</button></h3>
+   <div class="tbl"><table><thead><tr><th class="l">이름</th><th class="l">국적</th><th class="l">구분</th><th>개인 일당(선택)</th><th>활성</th></tr></thead><tbody>
+   ${S.staff.map((p,i)=>`<tr data-i="${i}"><td class="l"><b>${esc(p.name)}</b></td><td class="l"><input data-sf="nat" value="${esc(p.nat)}" style="width:90px"></td>
+    <td class="l"><input data-sf="grp" list="grpList" value="${esc(p.grp)}" style="width:90px"></td><td><input class="amt" data-sf="wage" inputmode="numeric" value="${p.wage||''}" placeholder="기본값"></td>
+    <td><input type="checkbox" data-sf="active" ${p.active!==false?'checked':''}></td></tr>`).join('')}</tbody></table></div>
+   <div class="hint">퇴사자는 삭제하지 말고 '활성'을 해제하세요. 과거 기록과 급여 내역이 그대로 유지됩니다.</div></div></div>`;
+  $('#grpList').innerHTML=gl.map(g=>`<option value="${esc(g)}">`).join('');
+}
+$('#v-set').addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.cfg){const k=t.dataset.cfg;S.cfg[k]=t.hasAttribute('data-n')?parseAmt(t.value):isNaN(t.value)?t.value:+t.value;touch('cfg');renderSettings()}
+  else if(t.hasAttribute('data-off')){const s=new Set(S.cfg.offDays);t.checked?s.add(+t.dataset.off):s.delete(+t.dataset.off);S.cfg.offDays=[...s].sort();touch('cfg')}
+  else if(t.dataset.sf){
+    const p=S.staff[t.closest('tr').dataset.i],f=t.dataset.sf;
+    p[f]=f==='active'?t.checked:f==='wage'?parseAmt(t.value)||0:t.value.trim();touch('staff');renderSettings();
+  }
+  else if(t.id==='rs')restore(t.files[0]);
+});
+$('#v-set').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.gm){const[g,d]=b.dataset.gm.split('|');moveGroup(g,+d);renderSettings()}
+  else if(b.id==='addBtn')$('#dlg').showModal();
+  else if(b.id==='bk')dl(`인력관리-백업-${TODAY}.json`,JSON.stringify({v:2,staff:S.staff,cfg:S.cfg,months:S.months,pays:S.pays}),'application/json');
+  else if(b.id==='xs')exportSheets();
+});
+$('#addForm').addEventListener('submit',e=>{
+  if(e.submitter.value!=='ok')return;
+  const name=$('#aName').value.trim();
+  if(!name||S.staff.some(p=>p.name===name)){alert('이름이 비어있거나 이미 존재합니다.');e.preventDefault();return}
+  S.staff.push({name,nat:$('#aNat').value.trim(),grp:$('#aGrp').value.trim(),active:true});
+  touch('staff');e.target.reset();renderAll();
+});
+function restore(f){
+  if(!f)return;
+  f.text().then(t=>{
+    const d=JSON.parse(t);if(!d.staff||!d.months)throw 0;
+    if(!confirm('현재 데이터를 백업 파일 내용으로 덮어쓸까요?'))return;
+    S.staff=d.staff;S.cfg={...DEFAULT_CFG,...d.cfg};S.months=d.months;S.pays=d.pays||{};allKeys().forEach(touch);renderAll();
+  }).catch(()=>alert('올바른 백업 파일이 아닙니다. (구버전 백업은 복원할 수 없습니다)'));
+}
+async function exportSheets(){
+  const work=[['날짜','이름','구분','근무형태','시간','메모']],pay=[['월','지급기준','이름','구분','전일','반일','시간제(일)','시간제(시간)','일당','급여','수당','알바비','합계','지급여부','지급일']];
+  Object.keys(S.months).sort().forEach(ym=>{
+    const rec=S.months[ym].rec;
+    Object.keys(rec).sort().forEach(d=>S.staff.forEach(p=>{const x=rec[d][p.name];if(x)work.push([d,p.name,p.grp,TYPES[x.t],x.h||'',x.m||''])}));
+  });
+  [...new Set([...Object.keys(S.months),...Object.keys(S.pays)])].sort().forEach(ym=>[1,2].forEach(per=>{
+    const P=calc(ym,per);P.rows.forEach(r=>{if(r.total||r.days)pay.push([ym,per===1?'15일':'말일',r.p.name,r.p.grp,r.full,r.half,r.part,r.hours,r.wage,r.base,r.allow,r.alba,r.total,r.paid?'지급':'미지급',r.paidAt])});
+  }));
+  try{setSync('busy');await gs('apiExport',{'내보내기_근무':work,'내보내기_급여':pay});setSync('ok');alert('구글 시트에 내보냈습니다.')}catch(e){setSync('err',e.message);alert('내보내기 실패: '+e.message)}
+}
+</script>
+<script>'END-OF-app7';</script>

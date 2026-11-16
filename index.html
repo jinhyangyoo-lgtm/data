@@ -3,419 +3,633 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>인력관리 대시보드</title>
+<title>인력관리</title>
 <style>
-:root{
-  --bg:#f5f6f8;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#e5e7eb;
-  --full:#2563eb;--full-bg:#dbeafe;
-  --half:#16a34a;--half-bg:#dcfce7;
-  --part:#ea580c;--part-bg:#ffedd5;
-  --accent:#111827;
-}
-@media (prefers-color-scheme:dark){
-  :root{--bg:#0f1115;--card:#181b22;--ink:#e5e7eb;--mute:#9ca3af;--line:#2a2f3a;
-  --full:#60a5fa;--full-bg:#1e3a8a55;--half:#4ade80;--half-bg:#14532d66;--part:#fb923c;--part-bg:#7c2d1266;--accent:#e5e7eb}
-}
+:root{--bg:#f3f4f7;--card:#fff;--ink:#1a1f2c;--mute:#667085;--line:#e3e6ec;--soft:#f1f3f7;--brand:#3454d1;
+--full:#2563eb;--full-bg:#e0eaff;--half:#15a34a;--half-bg:#dcf5e5;--part:#e26d00;--part-bg:#ffecd6;
+--off:#d92d20;--off-bg:#fdeceb;--pay:#a16207;--pay-bg:#fff1bf;--ok:#15803d;--ok-bg:#e3f7ea;--r:12px}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171b23;--ink:#e6e9f0;--mute:#98a2b3;--line:#2a303c;--soft:#1f2430;--brand:#6f88ff;
+--full:#7aa7ff;--full-bg:#1b2c55;--half:#4ade80;--half-bg:#12361f;--part:#fb923c;--part-bg:#47260b;
+--off:#f87171;--off-bg:#3a1717;--pay:#facc15;--pay-bg:#3d3410;--ok:#4ade80;--ok-bg:#12361f}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif}
-header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--card);border-bottom:1px solid var(--line)}
-h1{font-size:18px;margin:0}
-nav{display:flex;gap:6px;flex-wrap:wrap}
-button,select,input,textarea{font:inherit;color:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
 button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
-button:hover{background:var(--bg)}
-button.primary{background:var(--accent);color:var(--card);border-color:var(--accent)}
-nav button.on{background:var(--accent);color:var(--card);border-color:var(--accent)}
-main{max-width:1100px;margin:0 auto;padding:16px}
+button:hover{background:var(--soft)}
+button.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+button.pri:hover{filter:brightness(1.1)}
+input,select,textarea{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:-1px}
+input:disabled{opacity:.5}
+[hidden]{display:none!important}
+.top{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:8px 16px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:16px;display:flex;align-items:center}
+.sync{font-size:12px;font-weight:400;color:var(--mute);margin-left:10px;padding:2px 10px;border-radius:99px;border:1px solid var(--line);background:none}
+.sync.ok{color:var(--ok)}.sync.err{color:var(--off);border-color:var(--off)}.sync.busy{color:var(--part)}
+nav{display:flex;gap:4px;margin-left:auto}
+nav button{border:0;background:none;padding:8px 14px;font-weight:600;color:var(--mute)}
+nav button.on{background:var(--brand);color:#fff}
+main{max-width:1320px;margin:0 auto;padding:14px 16px 48px}
 .bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.bar h2{margin:0;font-size:17px;min-width:120px;text-align:center}
-.legend{display:flex;gap:12px;margin-left:auto;font-size:12px;color:var(--mute)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);overflow:hidden}
-.dow{padding:6px;text-align:center;font-size:12px;color:var(--mute);border-bottom:1px solid var(--line)}
-.dow:first-child,.day.sun .num{color:#dc2626}
-.dow:nth-child(7),.day.sat .num{color:#2563eb}
-.day{min-height:104px;padding:4px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0}
+.bar h2{margin:0;font-size:20px;min-width:150px;text-align:center}
+.legend{margin-left:auto;display:flex;gap:12px;font-size:12px;color:var(--mute);flex-wrap:wrap}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.sw.full{background:var(--full)}.sw.half{background:var(--half)}.sw.part{background:var(--part)}.sw.off{background:var(--off)}.sw.pay{background:#eab308}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+.kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.k{text-align:left;padding:10px 14px;border-radius:var(--r);background:var(--card)}
+.k small{color:var(--mute);display:block}.k b{font-size:19px}
+.k em{font-style:normal;font-size:12px;font-weight:600;margin-left:6px;padding:1px 8px;border-radius:99px;background:var(--soft);color:var(--mute)}
+.k em.ok{background:var(--ok-bg);color:var(--ok)}.k em.wait{background:var(--pay-bg);color:var(--pay)}
+.calwrap{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(340px,1fr);gap:14px;align-items:start}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));overflow:hidden;border-radius:var(--r)}
+.dw{padding:6px;text-align:center;font-size:12px;color:var(--mute);border-bottom:1px solid var(--line);background:var(--soft)}
+.dw:first-child{color:var(--off)}.dw:nth-child(7){color:var(--full)}
+.day{min-height:112px;padding:4px 5px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer;display:flex;flex-direction:column;gap:3px;min-width:0;position:relative}
 .day:nth-child(7n){border-right:0}
-.day:hover{background:var(--bg)}
-.day.other{opacity:.35}
-.day.today .num{background:var(--accent);color:var(--card);border-radius:10px;padding:0 6px}
-.day.sel{outline:2px solid var(--accent);outline-offset:-2px}
-.num{font-size:12px;align-self:flex-start;margin-bottom:2px}
-.chip{font-size:11px;padding:1px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:3px solid}
-.chip.full{background:var(--full-bg);border-color:var(--full);color:var(--full)}
-.chip.half{background:var(--half-bg);border-color:var(--half);color:var(--half)}
-.chip.part{background:var(--part-bg);border-color:var(--part);color:var(--part)}
-.chip .memo{opacity:.8}
-.dot{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:3px}
-.dot.full{background:var(--full)}.dot.half{background:var(--half)}.dot.part{background:var(--part)}
-.panel{margin-top:16px;padding:14px}
-.panel h3{margin:0 0 4px;font-size:16px}
-.group{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.ghead{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);flex-wrap:wrap}
-.ghead b{margin-right:auto}
-.ghead select{padding:4px}
-.row{display:grid;grid-template-columns:24px 110px 110px 80px 1fr;gap:8px;align-items:center;padding:6px 10px;border-top:1px solid var(--line)}
-.row .nm small{color:var(--mute)}
-.row input[type=text],.row input[type=number],.row select{width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--card)}
-.row input:disabled,.row select:disabled{opacity:.4}
-@media(max-width:640px){
-  .row{grid-template-columns:24px 1fr 1fr;}
-  .row .memo,.row .hrs{grid-column:2 / 4}
-  .day{min-height:70px}.chip{font-size:10px;padding:0 3px}
-  .legend{margin-left:0}
-}
-table{width:100%;border-collapse:collapse}
-th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
-th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
-th{font-size:12px;color:var(--mute);font-weight:600}
-tfoot td{font-weight:700;border-top:2px solid var(--line)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:900px){.grid2{grid-template-columns:1fr}}
-.card h3{margin:0;padding:12px 14px;font-size:15px;border-bottom:1px solid var(--line)}
-.card h3 small{color:var(--mute);font-weight:400;margin-left:6px}
-.scroll{overflow-x:auto}
+.day:hover{background:var(--soft)}
+.day.other{opacity:.4}
+.day.off{background:var(--off-bg)}
+.day.sel{outline:2px solid var(--brand);outline-offset:-2px;z-index:1}
+.dh{display:flex;align-items:center;gap:4px;min-height:20px}
+.num{font-size:12px;font-weight:600}
+.sun .num{color:var(--off)}.sat .num{color:var(--full)}
+.today .num{background:var(--brand);color:#fff!important;border-radius:99px;padding:0 7px}
+.tag{font-size:10px;font-weight:700;padding:0 6px;border-radius:4px;line-height:17px}
+.tag.off{background:var(--off);color:#fff}
+.cnt{display:flex;gap:3px;flex-wrap:wrap}
+.cnt i{font-style:normal;font-size:10.5px;font-weight:700;padding:0 5px;border-radius:4px}
+.cnt .full,.chip.full{background:var(--full-bg);color:var(--full)}
+.cnt .half,.chip.half{background:var(--half-bg);color:var(--half)}
+.cnt .part,.chip.part{background:var(--part-bg);color:var(--part)}
+.chips{display:flex;flex-direction:column;gap:2px;min-width:0}
+.chip{font-size:11px;padding:0 5px;border-radius:4px;border-left:3px solid currentColor;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.more{border:0;color:var(--mute);background:none}
+.paytag{margin-top:auto;font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--pay-bg);color:var(--pay);border:1px solid #eab308}
+.paytag.done{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
+.paytag small{display:block;font-weight:500}.paytag .ps{display:none}
+.day.payday{box-shadow:inset 0 3px 0 #eab308}
+@media(max-width:1000px){.calwrap{grid-template-columns:1fr}.kpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.paytag small,.paytag .pf{display:none}.paytag .ps{display:inline}.paytag{padding:1px 3px;font-size:10px}.chips{display:none}.day{min-height:78px}.legend{margin-left:0}nav{margin-left:0;width:100%;overflow-x:auto}.brand{width:100%}}
+</style>
+<style>
+.side{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto;padding:12px}
+.phead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.phead>div{flex:1;min-width:120px}.phead b{font-size:16px}.phead small{color:var(--mute);margin-left:8px}
+.phead .pm{padding:2px 10px}
+.offbtn.on{background:var(--off);border-color:var(--off);color:#fff}
+.ptools{display:flex;gap:6px;margin:10px 0 6px;flex-wrap:wrap}
+#dnote{width:100%;resize:vertical;min-height:34px;margin-bottom:6px}
+.grp{border:1px solid var(--line);border-radius:10px;margin-top:10px;overflow:hidden}
+.gh{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--soft);flex-wrap:wrap}
+.gh b{margin-right:2px}.gh .gc{color:var(--mute);font-size:12px;margin-right:auto}
+.gh button,.gh select{padding:3px 8px;font-size:12px}
+.grp.closed .gh{opacity:.6}
+.prow{display:grid;grid-template-columns:76px 1fr 58px 30px;gap:6px;align-items:center;padding:6px 8px;border-top:1px solid var(--line)}
+.prow.on{background:linear-gradient(90deg,var(--soft),transparent)}
+.pn b{display:block;line-height:1.2}.pn small{color:var(--mute);font-size:11px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;padding:5px 2px;font-size:13px;background:var(--card);color:var(--mute)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on[data-t=full]{background:var(--full);color:#fff}
+.seg button.on[data-t=half]{background:var(--half);color:#fff}
+.seg button.on[data-t=part]{background:var(--part);color:#fff}
+.prow .hrs{width:58px;padding:5px}.prow .x{padding:3px 0;color:var(--mute)}
+.prow .memo{grid-column:1/-1}
+.prow .hide{visibility:hidden}.prow .memo.hide{display:none}
 .hint{color:var(--mute);font-size:12px;margin:6px 2px}
-dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);max-width:420px;width:92%}
-dialog label{display:block;margin:8px 0 2px;font-size:12px;color:var(--mute)}
-dialog input,dialog select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card)}
-.hidden{display:none}
-.stat{font-size:12px;padding:2px 8px;border-radius:12px;margin-left:8px;vertical-align:2px;color:var(--mute)}
-.stat.ok{color:var(--half)}.stat.err{color:#dc2626;border-color:#dc2626}.stat.busy{color:var(--part)}
-.cfg label{display:block;margin:8px 0 2px;font-size:12px;color:var(--mute)}
-.cfg input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card)}
-details{margin-top:10px}details ol{padding-left:20px;margin:6px 0}code{background:var(--bg);padding:1px 4px;border-radius:4px}
+.warnbox{background:var(--pay-bg);color:var(--pay);border:1px solid #eab308;border-radius:var(--r);padding:8px 12px;margin-bottom:12px}
+.seg2{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+.seg2 button{border:0;border-radius:0;padding:6px 14px;background:none;color:var(--mute);font-weight:600}
+.seg2 button.on{background:var(--brand);color:#fff}
+.sum{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:12px 0}
+.sum div{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px}
+.sum small{display:block;color:var(--mute)}.sum b{font-size:17px}
+.sum .okc b{color:var(--ok)}.sum .wc b{color:var(--pay)}
+.bulk{display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap}.bulk .sp{margin-left:auto;color:var(--mute)}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;color:var(--mute);font-weight:600;background:var(--soft)}
+td.l,th.l{text-align:left}
+td small{color:var(--mute);margin-left:6px}
+tr.gr td{background:var(--soft);font-weight:700;text-align:left}
+tr.gr td.r{text-align:right}
+tr.paid{background:var(--ok-bg)}tr.zero td{color:var(--mute)}
+.amt{width:96px;text-align:right}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--pay);margin:0 4px}
+tfoot td{font-weight:700;border-top:2px solid var(--line);background:var(--soft)}
+.ytbl td,.ytbl th{padding:6px 7px;font-size:13px}
+.ytbl .c1{position:sticky;left:0;background:var(--card);z-index:1}
+.ytbl tr.gr .c1{background:var(--soft)}
+.ytbl td.cur,.ytbl th.cur{background:var(--pay-bg)}
+.ytbl .tt{font-weight:700;border-left:2px solid var(--line)}
+.yc b{display:block;font-size:14px}.yc small{display:block;margin:0;color:var(--mute);font-size:11px}
+.na{color:var(--mute);opacity:.45;font-size:11px;font-weight:400}
+.set{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;align-items:start}
+.set .card{padding:14px}.set h3{margin:0 0 8px;font-size:15px}
+.f{display:grid;grid-template-columns:130px 1fr;gap:8px;align-items:center;margin:6px 0}
+.f label{color:var(--mute)}
+.days{display:flex;gap:4px;flex-wrap:wrap}.days label{display:flex;gap:3px;align-items:center;color:var(--ink);padding:3px 8px;border:1px solid var(--line);border-radius:8px}
+.gl{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line)}.gl span{flex:1}
+dialog{border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--ink);width:min(92vw,400px)}
+dialog label{display:block;margin:8px 0 2px;font-size:12px;color:var(--mute)}dialog input{width:100%}
+@media(max-width:900px){.sum{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
-<header>
-  <h1>인력관리 대시보드 <button id="sstat" class="stat" title="클릭: 지금 동기화"></button></h1>
-  <nav>
-    <button data-tab="cal" class="on">캘린더·근무입력</button>
-    <button data-tab="month">월별 합계</button>
-    <button data-tab="pay">급여 기간별 합계</button>
-    <button data-tab="staff">직원 관리</button>
+<header class="top">
+  <div class="brand">인력관리<button class="sync" id="sync"></button></div>
+  <nav id="nav">
+    <button data-tab="cal" class="on">캘린더</button><button data-tab="pay">급여 지급</button>
+    <button data-tab="year">연간 현황</button><button data-tab="set">설정</button>
   </nav>
 </header>
 <main>
-  <div class="bar" id="monthbar">
-    <button id="prev">◀</button><h2 id="mtitle"></h2><button id="next">▶</button>
-    <button id="goToday">오늘</button>
-    <div class="legend">
-      <span><i class="dot full"></i>전일</span><span><i class="dot half"></i>반일</span><span><i class="dot part"></i>시간제</span>
+  <div class="bar" id="bar">
+    <button id="prev">◀</button><h2 id="title"></h2><button id="next">▶</button><button id="today">오늘</button>
+    <div class="legend" id="legend">
+      <span><i class="sw full"></i>전일</span><span><i class="sw half"></i>반일</span><span><i class="sw part"></i>시간제</span>
+      <span><i class="sw off"></i>휴무일</span><span><i class="sw pay"></i>급여일</span>
     </div>
   </div>
-
-  <section id="tab-cal">
-    <div class="card cal" id="cal"></div>
-    <div class="card panel" id="panel"></div>
+  <section id="v-cal">
+    <div class="kpi" id="kpi"></div>
+    <div class="calwrap"><div class="card"><div class="cal" id="cal"></div></div><aside class="card side" id="panel"></aside></div>
   </section>
-
-  <section id="tab-month" class="hidden"></section>
-  <section id="tab-pay" class="hidden"></section>
-  <section id="tab-staff" class="hidden"></section>
+  <section id="v-pay" hidden></section>
+  <section id="v-year" hidden></section>
+  <section id="v-set" hidden></section>
 </main>
-
-<dialog id="dlg">
-  <form method="dialog" id="addForm">
-    <h3 style="margin-top:0">직원 추가</h3>
-    <label>이름</label><input id="aName" required>
-    <label>국적</label><input id="aNat">
-    <label>구분</label><input id="aGrp" list="grpList" required><datalist id="grpList"></datalist>
-    <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
-      <button value="cancel" formnovalidate>취소</button><button class="primary" value="ok">추가</button>
-    </div>
-  </form>
-</dialog>
+<dialog id="dlg"><form method="dialog" id="addForm">
+  <h3 style="margin:0">직원 추가</h3>
+  <label>이름</label><input id="aName" required>
+  <label>국적</label><input id="aNat">
+  <label>구분 (그룹)</label><input id="aGrp" list="grpList" required><datalist id="grpList"></datalist>
+  <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button value="cancel" formnovalidate>취소</button><button class="pri" value="ok">추가</button></div>
+</form></dialog>
 
 <script>
-const TYPES={full:'전일',half:'반일',part:'시간제'};
-const WEIGHT={full:1,half:0.5,part:0};
-const KEY='hr-dashboard-v1';
-const DEFAULT_STAFF=[
-  {name:'조',nat:'태국',grp:'상근',memo:''},{name:'짙',nat:'태국',grp:'상근',memo:''},
-  {name:'파이',nat:'태국',grp:'상근',memo:''},{name:'짱',nat:'베트남',grp:'계절',memo:''},
-  {name:'유이',nat:'베트남',grp:'계절',memo:''},{name:'푄',nat:'태국',grp:'예비',memo:''},
-  {name:'놈',nat:'태국',grp:'예비',memo:''}];
-
-let db;
-try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
-if(!db||!db.staff)db={staff:DEFAULT_STAFF,rec:{}};   // rec[date][name]={type,hours,memo}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
-
-/* ---------- Google Sheets 동기화 (Apps Script 웹앱) ---------- */
-const CFG_KEY='hr-dashboard-sheet',DIRTY_KEY='hr-dashboard-dirty';
-// Apps Script 웹앱 안에서 열린 경우(google.script.run 사용 가능) 별도 URL 설정 없이 바로 시트와 연동
-const HOSTED=typeof google!=='undefined'&&!!google.script&&!!google.script.run;
-let cfg={};try{cfg=JSON.parse(localStorage.getItem(CFG_KEY))||{}}catch(e){}
-if(HOSTED)cfg={url:'hosted',token:''};
-const gs=(fn,...a)=>new Promise((ok,ng)=>google.script.run.withSuccessHandler(ok).withFailureHandler(e=>ng(new Error(e&&e.message||e)))[fn](...a));
-const sync={days:new Set(),staff:false,all:false,busy:false,state:cfg.url?'busy':'off',msg:'',timer:null};
-try{const d=JSON.parse(localStorage.getItem(DIRTY_KEY)||'{}');(d.days||[]).forEach(x=>sync.days.add(x));sync.staff=!!d.staff;sync.all=!!d.all}catch(e){}
-const saveDirty=()=>{try{localStorage.setItem(DIRTY_KEY,JSON.stringify({days:[...sync.days],staff:sync.staff,all:sync.all}))}catch(e){}};
-function setStatus(state,msg=''){
-  sync.state=state;sync.msg=msg;
-  const b=document.getElementById('sstat');if(!b)return;
-  const t={off:'로컬 저장만',busy:'시트 동기화 중…',ok:'✔ Google Sheets 동기화됨',err:'⚠ 동기화 실패 (클릭하여 재시도)'}[state];
-  b.textContent=t;b.className='stat '+(state==='ok'?'ok':state==='err'?'err':state==='busy'?'busy':'');
-  b.title=msg||'클릭: 지금 동기화';
-}
-async function api(body){
-  if(HOSTED)return gs('apiCall',body);
-  const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:cfg.token||'',...body})});
-  const j=await r.json();if(j.error)throw new Error(j.error);return j;
-}
-async function fetchAll(){
-  if(HOSTED)return gs('apiRead');
-  const u=cfg.url+(cfg.url.includes('?')?'&':'?')+'token='+encodeURIComponent(cfg.token||'');
-  const j=await (await fetch(u)).json();if(j.error)throw new Error(j.error);return j;
-}
-function markDay(d){if(cfg.url){sync.days.add(d);saveDirty();queueFlush()}}
-function markStaff(){if(cfg.url){sync.staff=true;saveDirty();queueFlush()}}
-function markAll(){if(cfg.url){sync.all=true;saveDirty();queueFlush()}}
-function queueFlush(){if(!cfg.url)return;setStatus('busy');clearTimeout(sync.timer);sync.timer=setTimeout(flush,600)}
-async function flush(){
-  if(!cfg.url)return true;
-  if(sync.busy){queueFlush();return false}
-  if(!sync.days.size&&!sync.staff&&!sync.all){setStatus('ok');return true}
-  sync.busy=true;setStatus('busy');
-  // 보낼 목록을 먼저 떼어내고, 실패하면 되돌린다 (전송 중 새로 바뀐 날짜는 그대로 남음)
-  const days=[...sync.days],staff=sync.staff,all=sync.all;
-  sync.days.clear();sync.staff=false;sync.all=false;saveDirty();
-  try{
-    if(all)await api({action:'setAll',staff:db.staff,rec:db.rec});
-    else{
-      if(staff)await api({action:'setStaff',staff:db.staff});
-      for(const d of days)await api({action:'setDay',date:d,entries:db.rec[d]||{}});
-    }
-    sync.busy=false;
-    if(sync.days.size||sync.staff||sync.all)return flush();
-    setStatus('ok');return true;
-  }catch(e){
-    days.forEach(d=>sync.days.add(d));sync.staff=sync.staff||staff;sync.all=sync.all||all;saveDirty();
-    sync.busy=false;setStatus('err',e.message);return false;
-  }
-}
-async function pullFromSheet(){
-  if(!cfg.url)return;
-  setStatus('busy');
-  try{
-    if(sync.days.size||sync.staff||sync.all){if(!await flush())return}   // 미전송 변경분 먼저 올림
-    const j=await fetchAll();
-    if(!j.staff.length&&!Object.keys(j.rec).length){markAll();await flush()}  // 빈 시트: 현재 데이터를 올려 초기화
-    else{db={staff:j.staff,rec:j.rec};save();renderAll()}
-    setStatus('ok');
-  }catch(e){setStatus('err',e.message)}
-}
-
+/* ===== 1. 유틸 · 상태 · 저장소 ===== */
 const $=s=>document.querySelector(s);
 const pad=n=>String(n).padStart(2,'0');
-const ds=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
+const ymd=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
+const ymk=(y,m)=>`${y}-${pad(m+1)}`;
+const dim=(y,m)=>new Date(y,m+1,0).getDate();
+const parse=s=>{const[a,b,c]=s.split('-').map(Number);return{y:a,m:b-1,d:c}};
+const dow=s=>{const p=parse(s);return new Date(p.y,p.m,p.d).getDay()};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const won=n=>(Math.round(n)||0).toLocaleString('ko-KR');
 const num=n=>Number.isInteger(n)?n:n.toFixed(1);
-const now=new Date();
-let view={y:now.getFullYear(),m:now.getMonth()};
-let sel=ds(now.getFullYear(),now.getMonth(),now.getDate());
-let tab='cal';
-let bulkType={};   // 구분별 일괄 입력 시 사용할 근무형태
+const DOW=['일','월','화','수','목','금','토'];
+const TYPES={full:'전일',half:'반일',part:'시간'};
+const SHORT={full:'전',half:'반',part:'시'};
+const NOW=new Date();
+const TODAY=ymd(NOW.getFullYear(),NOW.getMonth(),NOW.getDate());
+const DEFAULT_STAFF=[['조','태국','상근'],['짙','태국','상근'],['파이','태국','상근'],['짱','베트남','계절'],['유이','베트남','계절'],['푄','태국','예비'],['놈','태국','예비']]
+  .map(([name,nat,grp])=>({name,nat,grp,active:true}));
+const DEFAULT_CFG={wageSeasonal:0,wageOther:0,partBase:8,offDays:[],order:['상근','계절','예비'],seasonGroup:'계절',seasonFrom:3,seasonTo:10};
+const S={staff:DEFAULT_STAFF.map(p=>({...p})),cfg:{...DEFAULT_CFG},months:{},pays:{}};
+const EMPTY_M={rec:{},note:{},off:{}};
+const monR=ym=>S.months[ym]||EMPTY_M;
+const monW=ym=>S.months[ym]||(S.months[ym]={rec:{},note:{},off:{}});
+const payR=(ym,p)=>(S.pays[ym]||{})['p'+p]||{};
+const payW=(ym,p,n)=>{const d=S.pays[ym]||(S.pays[ym]={});const g=d['p'+p]||(d['p'+p]={});return g[n]||(g[n]={})};
 
-const groups=()=>[...new Set(db.staff.map(s=>s.grp))];
-const daysIn=(y,m)=>new Date(y,m+1,0).getDate();
+const getDoc=k=>k==='staff'?S.staff:k==='cfg'?S.cfg:k[0]==='m'?S.months[k.slice(2)]:S.pays[k.slice(2)];
+function setDoc(k,v){
+  if(k==='staff')S.staff=v;else if(k==='cfg')S.cfg={...DEFAULT_CFG,...v};
+  else if(k[0]==='m')S.months[k.slice(2)]=v;else S.pays[k.slice(2)]=v;
+}
+const allKeys=()=>['staff','cfg',...Object.keys(S.months).map(k=>'m:'+k),...Object.keys(S.pays).map(k=>'p:'+k)];
 
-/* ---------- 캘린더 ---------- */
+/* 저장: 변경된 문서만 모아 1초 뒤 한 번에 전송 (낙관적 UI — 화면은 즉시 반영) */
+const HOSTED=typeof google!=='undefined'&&!!google.script&&!!google.script.run;
+const gs=(fn,...a)=>new Promise((ok,ng)=>google.script.run.withSuccessHandler(ok).withFailureHandler(e=>ng(new Error(e&&e.message||e)))[fn](...a));
+const LS='hr2-cache';
+const dirty=new Set();let flushing=false,tFlush,tCache;
+function setSync(st,msg=''){
+  const b=$('#sync');if(!b)return;
+  b.textContent={local:'이 기기에만 저장',busy:'저장 중…',ok:'✔ 저장됨',err:'⚠ 저장 실패 · 클릭해 재시도',load:'불러오는 중…'}[st];
+  b.className='sync '+(st==='ok'?'ok':st==='err'?'err':st==='busy'||st==='load'?'busy':'');b.title=msg;
+}
+function cacheNow(){try{const docs={};allKeys().forEach(k=>docs[k]=JSON.stringify(getDoc(k)));localStorage.setItem(LS,JSON.stringify({docs,dirty:[...dirty]}))}catch(e){}}
+function touch(k){
+  dirty.add(k);clearTimeout(tCache);tCache=setTimeout(cacheNow,300);
+  if(!HOSTED){setSync('local');return}
+  setSync('busy');clearTimeout(tFlush);tFlush=setTimeout(flush,1000);
+}
+async function flush(){
+  clearTimeout(tFlush);
+  if(!HOSTED||flushing||!dirty.size)return;
+  flushing=true;const keys=[...dirty];dirty.clear();
+  const ch={};keys.forEach(k=>ch[k]=JSON.stringify(getDoc(k)));
+  try{await gs('apiSave',ch);cacheNow();flushing=false;if(dirty.size)flush();else setSync('ok')}
+  catch(e){keys.forEach(k=>dirty.add(k));flushing=false;setSync('err',e.message);tFlush=setTimeout(flush,10000)}
+}
+function loadLocal(){
+  try{
+    const c=JSON.parse(localStorage.getItem(LS)||'null');if(!c)return;
+    for(const[k,v]of Object.entries(c.docs))setDoc(k,JSON.parse(v));
+    (c.dirty||[]).forEach(k=>dirty.add(k));
+  }catch(e){}
+}
+async function pull(){
+  if(!HOSTED){setSync('local');return false}
+  setSync('load');
+  try{
+    const r=await gs('apiLoad');
+    for(const[k,v]of Object.entries(r.docs)){if(dirty.has(k))continue;try{setDoc(k,JSON.parse(v))}catch(e){}}
+    if(!r.docs.staff){touch('staff');touch('cfg')}
+    if(dirty.size)flush();else setSync('ok');
+    cacheNow();return true;
+  }catch(e){setSync('err',e.message);return false}
+}
+</script>
+<script>
+/* ===== 2. 계산 로직 ===== */
+function groups(){
+  const o=S.cfg.order.slice();
+  S.staff.forEach(p=>{if(!o.includes(p.grp))o.push(p.grp)});
+  return o.filter(g=>S.staff.some(p=>p.grp===g));
+}
+function inSeason(m1){const a=+S.cfg.seasonFrom,b=+S.cfg.seasonTo;return a<=b?m1>=a&&m1<=b:m1>=a||m1<=b}
+const groupOpen=(g,ym)=>g!==S.cfg.seasonGroup||inSeason(+ym.slice(5,7));
+function isOff(ds){
+  const mo=monR(ds.slice(0,7));
+  return ds in mo.off?mo.off[ds]:S.cfg.offDays.includes(dow(ds));
+}
+const wageOf=p=>p.wage>0?+p.wage:p.grp===S.cfg.seasonGroup?+S.cfg.wageSeasonal||0:+S.cfg.wageOther||0;
+/* per: 1 = 1~15일분(15일 지급), 2 = 16일~말일분(말일 지급) */
+function calc(ym,per){
+  const y=+ym.slice(0,4),m=+ym.slice(5,7)-1,last=dim(y,m),from=per===1?1:16,to=per===1?15:last;
+  const mo=monR(ym),pays=payR(ym,per),rows=[];
+  for(const p of S.staff){
+    const r={p,full:0,half:0,part:0,hours:0};
+    for(let d=from;d<=to;d++){
+      const x=(mo.rec[ymd(y,m,d)]||{})[p.name];
+      if(x){r[x.t]++;if(x.t==='part')r.hours+=Number(x.h)||0}
+    }
+    r.days=r.full+r.half*.5;r.wage=wageOf(p);
+    r.base=Math.round(r.wage*r.days+r.wage/(+S.cfg.partBase||8)*r.hours);
+    const pr=pays[p.name]||{};
+    r.allow=Number(pr.allow)||0;r.alba=Number(pr.alba)||0;r.paid=!!pr.paid;r.paidAt=pr.paidAt||'';
+    r.changed=r.paid&&pr.amt!=null&&pr.amt!==r.base;
+    r.total=r.base+r.allow+r.alba;
+    const act=r.days>0||r.hours>0||r.allow||r.alba||r.paid;
+    if(act||(p.active!==false&&groupOpen(p.grp,ym)))rows.push(r);
+  }
+  return{rows,t:totals(rows),from,to,last,ym,per,payDay:to};
+}
+function totals(rows){
+  const t={base:0,allow:0,alba:0,total:0,paid:0,unpaid:0,n:0,pn:0,days:0};
+  rows.forEach(r=>{
+    t.base+=r.base;t.allow+=r.allow;t.alba+=r.alba;t.total+=r.total;t.days+=r.days;
+    if(r.total>0){t.n++;if(r.paid){t.paid+=r.total;t.pn++}else t.unpaid+=r.total}
+  });
+  return t;
+}
+const worklabel=r=>[r.full&&`전일 ${r.full}`,r.half&&`반일 ${r.half}`,r.part&&`시간 ${r.part}일(${num(r.hours)}h)`].filter(Boolean).join(' · ')||'–';
+const orderedStaff=()=>{const g=groups();return S.staff.slice().sort((a,b)=>g.indexOf(a.grp)-g.indexOf(b.grp))};
+function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
+</script>
+<script>
+/* ===== 3. 캘린더 ===== */
+let view={y:NOW.getFullYear(),m:NOW.getMonth()},sel=TODAY,tab='cal';
+const short=n=>n>=10000?(Math.round(n/1000)/10)+'만':won(n);
+function renderKpi(P1,P2){
+  const ym=P1.ym,stat=t=>!t.n?'<em>대상 없음</em>':t.pn===t.n?'<em class="ok">지급완료</em>':`<em class="wait">미지급 ${t.n-t.pn}명</em>`;
+  const tot={total:P1.t.total+P2.t.total,paid:P1.t.paid+P2.t.paid,unpaid:P1.t.unpaid+P2.t.unpaid,days:P1.t.days+P2.t.days};
+  const head=(P)=>`<small>${view.m+1}/${P.payDay} 지급분 (${P.from}~${P.to}일)</small><b>₩${won(P.t.total)}</b>${stat(P.t)}`;
+  $('#kpi').innerHTML=`<button class="k card" data-go="1">${head(P1)}</button><button class="k card" data-go="2">${head(P2)}</button>
+   <button class="k card" data-go="1"><small>이번 달 총 지급액</small><b>₩${won(tot.total)}</b><em class="ok">완료 ${won(tot.paid)}</em><em class="wait">미지급 ${won(tot.unpaid)}</em></button>
+   <div class="k card" style="cursor:default"><small>이번 달 환산 근무일 합계</small><b>${num(tot.days)}일</b></div>`;
+}
 function renderCal(){
-  $('#mtitle').textContent=`${view.y}년 ${view.m+1}월`;
-  const first=new Date(view.y,view.m,1).getDay(), n=daysIn(view.y,view.m);
-  let h=['일','월','화','수','목','금','토'].map(d=>`<div class="dow">${d}</div>`).join('');
-  const todayS=ds(now.getFullYear(),now.getMonth(),now.getDate());
-  const total=Math.ceil((first+n)/7)*7;
+  const{y,m}=view,ym=ymk(y,m),P1=calc(ym,1),P2=calc(ym,2),n=dim(y,m);
+  $('#title').textContent=`${y}년 ${m+1}월`;
+  renderKpi(P1,P2);
+  const first=new Date(y,m,1).getDay(),total=Math.ceil((first+n)/7)*7;
+  let h=DOW.map(d=>`<div class="dw">${d}</div>`).join('');
   for(let i=0;i<total;i++){
-    const d=new Date(view.y,view.m,1-first+i);
-    const k=ds(d.getFullYear(),d.getMonth(),d.getDate());
-    const other=d.getMonth()!==view.m, dw=d.getDay();
-    const r=db.rec[k]||{};
-    const chips=db.staff.filter(s=>r[s.name]).map(s=>{
-      const x=r[s.name];
-      const label=x.type==='part'?`${s.name} ${x.hours?x.hours+'h':'시간제'}`:`${s.name} ${x.type==='half'?'반':''}`;
-      return `<div class="chip ${x.type}" title="${esc(s.name)} ${TYPES[x.type]}${x.memo?' · '+esc(x.memo):''}">${esc(label)}${x.memo?' <span class="memo">📝</span>':''}</div>`;
-    }).join('');
-    h+=`<div class="day ${other?'other':''} ${k===todayS?'today':''} ${k===sel?'sel':''} ${dw===0?'sun':dw===6?'sat':''}" data-d="${k}"><span class="num">${d.getDate()}</span>${chips}</div>`;
+    const d=new Date(y,m,1-first+i),ds=ymd(d.getFullYear(),d.getMonth(),d.getDate()),other=d.getMonth()!==m;
+    const rec=monR(ds.slice(0,7)).rec[ds]||{},who=S.staff.filter(p=>rec[p.name]),w=d.getDay();
+    const c={full:0,half:0,part:0};who.forEach(p=>c[rec[p.name].t]++);
+    const pd=!other&&(d.getDate()===15?P1:d.getDate()===n?P2:null);
+    const chips=who.slice(0,7).map(p=>{const x=rec[p.name];
+      return`<div class="chip ${x.t}" title="${esc(p.name)} ${TYPES[x.t]}${x.m?' · '+esc(x.m):''}">${esc(p.name)}${x.t==='half'?' 반':x.t==='part'?' '+(x.h?x.h+'h':'시'):''}${x.m?' 📝':''}</div>`}).join('')+(who.length>7?`<div class="chip more">+${who.length-7}명</div>`:'');
+    const off=isOff(ds);
+    h+=`<div class="day ${other?'other':''} ${ds===TODAY?'today':''} ${ds===sel?'sel':''} ${off?'off':''} ${pd?'payday':''} ${w===0?'sun':w===6?'sat':''}" data-d="${ds}">
+     <div class="dh"><span class="num">${d.getDate()}</span>${off?'<span class="tag off">휴무</span>':''}</div>
+     <div class="cnt">${['full','half','part'].map(t=>c[t]?`<i class="${t}">${SHORT[t]} ${c[t]}</i>`:'').join('')}</div>
+     <div class="chips">${chips}</div>
+     ${pd?`<div class="paytag ${pd.t.n&&pd.t.pn===pd.t.n?'done':''}">💰 <span class="pf">급여일 ₩${won(pd.t.total)}</span><span class="ps">${short(pd.t.total)}</span><small>${!pd.t.n?'지급 대상 없음':pd.t.pn===pd.t.n?'✔ 지급완료':`미지급 ${pd.t.n-pd.t.pn}/${pd.t.n}명`}</small></div>`:''}
+    </div>`;
   }
   $('#cal').innerHTML=h;
-  $('#cal').querySelectorAll('.day').forEach(e=>e.onclick=()=>{sel=e.dataset.d;const d=new Date(sel);if(d.getMonth()!==view.m){view={y:d.getFullYear(),m:d.getMonth()}}renderCal();renderPanel()});
 }
-
-/* ---------- 일별 입력 패널 ---------- */
+$('#cal').addEventListener('click',e=>{
+  const c=e.target.closest('.day');if(!c)return;
+  sel=c.dataset.d;const p=parse(sel);
+  if(p.y!==view.y||p.m!==view.m)view={y:p.y,m:p.m};
+  renderCal();renderPanel();
+  if(innerWidth<1000)$('#panel').scrollIntoView({behavior:'smooth',block:'start'});
+});
+$('#kpi').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b){pv.per=+b.dataset.go;setTab('pay')}});
+</script>
+<script>
+/* ===== 4. 일별 근무 입력 패널 ===== */
+const bulk={};
+const curYm=()=>sel.slice(0,7);
+const curRec=()=>monR(curYm()).rec[sel]||{};
+function setRec(name,t){
+  const mo=monW(curYm()),rec=mo.rec[sel]||(mo.rec[sel]={}),old=rec[name];
+  if(t)rec[name]={t,h:t==='part'&&old?old.h||'':'',m:old?old.m||'':''};else delete rec[name];
+  if(!Object.keys(rec).length)delete mo.rec[sel];
+  touch('m:'+curYm());
+}
+function rowHTML(p,x){
+  return`<div class="prow ${x?'on':''}" data-n="${esc(p.name)}"><div class="pn"><b>${esc(p.name)}</b><small>${esc(p.nat||'')}</small></div>
+  <div class="seg">${['full','half','part'].map(t=>`<button data-t="${t}" class="${x&&x.t===t?'on':''}">${TYPES[t]}</button>`).join('')}</div>
+  <input class="hrs ${x&&x.t==='part'?'':'hide'}" data-f="h" type="number" min="0" max="24" step="0.5" placeholder="시간" value="${x&&x.h||''}">
+  <button class="x ${x?'':'hide'}" data-t="" title="출근 해제">✕</button>
+  <input class="memo ${x?'':'hide'}" data-f="m" placeholder="메모 (선택)" value="${esc(x&&x.m)}"></div>`;
+}
 function renderPanel(){
-  const r=db.rec[sel]||{};
-  const d=new Date(sel+'T00:00');
-  const cnt=Object.keys(r).length;
-  let h=`<h3>${sel} (${'일월화수목금토'[d.getDay()]}) 근무 입력 <small style="font-weight:400;color:var(--mute)">· 출근 ${cnt}명</small></h3>
-  <div class="hint">체크하면 출근으로 기록되며 기본값은 전일근무입니다. 사람별로 반일·시간제로 바꾸거나 메모를 남길 수 있습니다.</div>`;
-  for(const g of groups()){
-    const members=db.staff.filter(s=>s.grp===g);
-    const bt=bulkType[g]||'full';
-    h+=`<div class="group"><div class="ghead"><b>${esc(g)} <span style="color:var(--mute);font-weight:400">(${members.length}명)</span></b>
-      <select data-bt="${esc(g)}">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${k===bt?'selected':''}>${v}</option>`).join('')}</select>
-      <button data-all="${esc(g)}">전원 출근 입력</button><button data-none="${esc(g)}">전원 해제</button></div>`;
-    for(const s of members){
-      const x=r[s.name];
-      h+=`<div class="row" data-n="${esc(s.name)}">
-        <input type="checkbox" ${x?'checked':''} data-f="on">
-        <div class="nm"><b>${esc(s.name)}</b> <small>${esc(s.nat)}</small></div>
-        <select data-f="type" ${x?'':'disabled'}>${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${x&&x.type===k?'selected':''}>${v}</option>`).join('')}</select>
-        <div class="hrs"><input type="number" data-f="hours" min="0" max="24" step="0.5" placeholder="시간" value="${x&&x.hours||''}" ${x&&x.type==='part'?'':'disabled'}></div>
-        <div class="memo"><input type="text" data-f="memo" placeholder="메모" value="${esc(x&&x.memo)}" ${x?'':'disabled'}></div>
-      </div>`;
-    }
-    h+='</div>';
-  }
+  const p=parse(sel),ym=curYm(),rec=curRec(),off=isOff(sel),note=monR(ym).note[sel]||'',gl=groups();
+  let h=`<div class="phead"><button class="pm" data-pd="-1">‹</button><div><b>${p.m+1}월 ${p.d}일 (${DOW[dow(sel)]})</b><small>출근 ${Object.keys(rec).length}명</small></div><button class="pm" data-pd="1">›</button>
+   <button class="offbtn ${off?'on':''}" data-off>${off?'휴무일 해제':'휴무일로 지정'}</button></div>
+   <div class="ptools"><button data-copy>어제와 동일하게</button><button data-clear>전체 해제</button></div>
+   <textarea id="dnote" rows="1" placeholder="이 날의 공통 메모">${esc(note)}</textarea>`;
+  gl.forEach((g,i)=>{
+    const open=groupOpen(g,ym),mem=S.staff.filter(x=>x.grp===g&&(x.active!==false||rec[x.name])),show=open||mem.some(x=>rec[x.name]);
+    const bt=bulk[g]||'full',on=mem.filter(x=>rec[x.name]).length;
+    h+=`<section class="grp ${open?'':'closed'}" data-g="${esc(g)}"><div class="gh"><b>${esc(g)}</b><span class="gc">${on}/${mem.length}명</span>
+      ${show?`<select data-bt>${['full','half','part'].map(t=>`<option value="${t}" ${t===bt?'selected':''}>${TYPES[t]}</option>`).join('')}</select><button data-gall>전원 출근</button><button data-gnone>해제</button>`:''}
+      <button data-gm="-1" ${i?'':'disabled'} title="위로">▲</button><button data-gm="1" ${i<gl.length-1?'':'disabled'} title="아래로">▼</button></div>
+      ${show?mem.map(x=>rowHTML(x,rec[x.name])).join(''):`<div class="hint" style="padding:8px">${esc(g)} 근로는 ${S.cfg.seasonFrom}~${S.cfg.seasonTo}월에만 이용합니다.</div>`}</section>`;
+  });
   $('#panel').innerHTML=h;
 }
-function setRec(name,x){
-  db.rec[sel]=db.rec[sel]||{};
-  if(x)db.rec[sel][name]=x;else delete db.rec[sel][name];
-  if(!Object.keys(db.rec[sel]).length)delete db.rec[sel];
-  markDay(sel);
+function moveGroup(g,d){
+  const a=groups(),i=a.indexOf(g),j=i+d;if(j<0||j>=a.length)return;
+  [a[i],a[j]]=[a[j],a[i]];S.cfg.order=a;touch('cfg');renderPanel();if(tab==='set')renderSettings();
 }
-$('#panel').addEventListener('change',e=>{
-  const t=e.target;
-  if(t.dataset.bt){bulkType[t.dataset.bt]=t.value;return}
-  const row=t.closest('.row');if(!row)return;
-  const name=row.dataset.n,f=t.dataset.f;
-  const cur=(db.rec[sel]||{})[name];
-  if(f==='on')setRec(name,t.checked?{type:'full',hours:'',memo:''}:null);
-  else if(cur){
-    if(f==='type'){cur.type=t.value;if(t.value!=='part')cur.hours=''}
-    else cur[f]=t.value;
-  }
-  save();renderCal();renderPanel();
-  if(f==='memo'||f==='hours')row.querySelector(`[data-f=${f}]`)?.focus();
-});
+function setOff(){
+  const mo=monW(curYm()),def=S.cfg.offDays.includes(dow(sel)),v=!isOff(sel);
+  if(v===def)delete mo.off[sel];else mo.off[sel]=v;touch('m:'+curYm());
+}
+function copyPrev(){
+  const p=parse(sel),d=new Date(p.y,p.m,p.d-1),ds=ymd(d.getFullYear(),d.getMonth(),d.getDate());
+  const src=monR(ds.slice(0,7)).rec[ds]||{};
+  if(!Object.keys(src).length){alert('전날 근무 기록이 없습니다.');return}
+  const mo=monW(curYm());mo.rec[sel]={};
+  S.staff.forEach(x=>{if(src[x.name]&&groupOpen(x.grp,curYm()))mo.rec[sel][x.name]={...src[x.name]}});
+  if(!Object.keys(mo.rec[sel]).length)delete mo.rec[sel];touch('m:'+curYm());
+}
+function shiftSel(k){const p=parse(sel),d=new Date(p.y,p.m,p.d+k);sel=ymd(d.getFullYear(),d.getMonth(),d.getDate());view={y:d.getFullYear(),m:d.getMonth()}}
 $('#panel').addEventListener('click',e=>{
-  const g=e.target.dataset.all??e.target.dataset.none;
-  if(g===undefined)return;
-  const all=e.target.dataset.all!==undefined;
-  db.staff.filter(s=>s.grp===g).forEach(s=>{
-    if(all){const old=(db.rec[sel]||{})[s.name];if(!old)setRec(s.name,{type:bulkType[g]||'full',hours:'',memo:''})}
-    else setRec(s.name,null);
-  });
-  save();renderCal();renderPanel();
+  const b=e.target.closest('button');if(!b)return;
+  const row=b.closest('.prow'),g=b.closest('.grp')?.dataset.g;
+  if(row&&b.hasAttribute('data-t')){const t=b.dataset.t,cur=curRec()[row.dataset.n];setRec(row.dataset.n,!t||(cur&&cur.t===t)?null:t)}
+  else if(b.dataset.pd)shiftSel(+b.dataset.pd);
+  else if(b.hasAttribute('data-off'))setOff();
+  else if(b.hasAttribute('data-copy'))copyPrev();
+  else if(b.hasAttribute('data-clear')){const mo=monW(curYm());delete mo.rec[sel];touch('m:'+curYm())}
+  else if(b.dataset.gm){moveGroup(g,+b.dataset.gm);return}
+  else if(b.hasAttribute('data-gall')){const rec=curRec();S.staff.filter(x=>x.grp===g&&x.active!==false&&!rec[x.name]).forEach(x=>setRec(x.name,bulk[g]||'full'))}
+  else if(b.hasAttribute('data-gnone')){S.staff.filter(x=>x.grp===g).forEach(x=>setRec(x.name,null))}
+  else return;
+  renderCal();renderPanel();
 });
-
-/* ---------- 집계 ---------- */
-function summarize(y,m,from,to){
-  const out=db.staff.map(s=>({s,full:0,half:0,part:0,hours:0,eq:0}));
-  const idx=Object.fromEntries(out.map(o=>[o.s.name,o]));
-  for(let d=from;d<=to;d++){
-    const r=db.rec[ds(y,m,d)];if(!r)continue;
-    for(const [name,x] of Object.entries(r)){
-      const o=idx[name];if(!o)continue;
-      o[x.type]++;o.eq+=WEIGHT[x.type];if(x.type==='part')o.hours+=Number(x.hours)||0;
-    }
-  }
-  return out;
+$('#panel').addEventListener('change',e=>{if(e.target.hasAttribute('data-bt'))bulk[e.target.closest('.grp').dataset.g]=e.target.value});
+$('#panel').addEventListener('input',e=>{
+  const t=e.target;
+  if(t.id==='dnote'){const mo=monW(curYm());if(t.value.trim())mo.note[sel]=t.value;else delete mo.note[sel];touch('m:'+curYm());return}
+  const row=t.closest('.prow'),f=t.dataset.f;if(!row||!f)return;
+  const x=curRec()[row.dataset.n];if(!x)return;
+  x[f]=t.value;touch('m:'+curYm());renderCal();
+});
+</script>
+<script>
+/* ===== 5. 급여 지급 ===== */
+const pv={per:NOW.getDate()<=15?1:2,sel:new Set()};
+const parseAmt=v=>Number(String(v).replace(/[^0-9.-]/g,''))||0;
+function payRow(r){
+  const n=esc(r.p.name),dis=r.paid?'disabled':'';
+  return`<tr class="${r.paid?'paid':''} ${r.total?'':'zero'}" data-n="${n}">
+   <td><input type="checkbox" data-sel ${pv.sel.has(r.p.name)?'checked':''} ${r.paid||!r.total?'disabled':''}></td>
+   <td class="l"><b>${n}</b><small>${esc(r.p.nat||'')}</small></td><td class="l">${worklabel(r)}</td>
+   <td>${num(r.days)}일</td><td>${won(r.wage)}</td><td data-c="base">${won(r.base)}</td>
+   <td><input class="amt" data-pf="allow" inputmode="numeric" value="${r.allow?won(r.allow):''}" placeholder="0" ${dis}></td>
+   <td><input class="amt" data-pf="alba" inputmode="numeric" value="${r.alba?won(r.alba):''}" placeholder="0" ${dis}></td>
+   <td data-c="total"><b>${won(r.total)}</b></td>
+   <td class="l">${r.paid?`<span class="ok">✔ ${esc(r.paidAt.slice(5))} 지급</span>${r.changed?'<span class="warn" title="지급 이후 근무기록이 변경되었습니다">⚠변경</span>':''} <button data-cancel>취소</button>`:`<button class="pri" data-pay ${r.total?'':'disabled'}>지급</button>`}</td></tr>`;
 }
-function table(rows){
-  const t=rows.reduce((a,o)=>({full:a.full+o.full,half:a.half+o.half,part:a.part+o.part,hours:a.hours+o.hours,eq:a.eq+o.eq}),{full:0,half:0,part:0,hours:0,eq:0});
-  return `<div class="scroll"><table><thead><tr><th>이름</th><th>구분</th>
-    <th style="color:var(--full)">전일(일)</th><th style="color:var(--half)">반일(일)</th><th style="color:var(--part)">시간제(일)</th><th style="color:var(--part)">시간제(시간)</th><th>환산 근무일</th></tr></thead><tbody>
-    ${rows.map(o=>`<tr><td>${esc(o.s.name)}</td><td>${esc(o.s.grp)}</td><td>${o.full}</td><td>${o.half}</td><td>${o.part}</td><td>${num(o.hours)}</td><td><b>${num(o.eq)}</b></td></tr>`).join('')}
-    </tbody><tfoot><tr><td>합계</td><td></td><td>${t.full}</td><td>${t.half}</td><td>${t.part}</td><td>${num(t.hours)}</td><td>${num(t.eq)}</td></tr></tfoot></table></div>`;
-}
-function renderMonth(){
-  const n=daysIn(view.y,view.m);
-  $('#tab-month').innerHTML=`<div class="card"><h3>${view.y}년 ${view.m+1}월 직원별 근무 합계<small>1일 ~ ${n}일</small></h3>${table(summarize(view.y,view.m,1,n))}</div>
-  <div class="hint">환산 근무일 = 전일 1일 + 반일 0.5일 (시간제는 일수·시간을 따로 집계)</div>`;
+function sumHTML(t){
+  return`<div><small>대상 / 지급완료</small><b>${t.n}명 / ${t.pn}명</b></div><div><small>급여 (근무분)</small><b>₩${won(t.base)}</b></div>
+   <div><small>수당 + 알바비</small><b>₩${won(t.allow+t.alba)}</b></div><div class="okc"><small>지급완료</small><b>₩${won(t.paid)}</b></div><div class="wc"><small>미지급 (총 ${won(t.total)})</small><b>₩${won(t.unpaid)}</b></div>`;
 }
 function renderPay(){
-  const n=daysIn(view.y,view.m);
-  $('#tab-pay').innerHTML=`<div class="grid2">
-    <div class="card"><h3>1일 ~ 15일<small>${view.m+1}/15 지급분</small></h3>${table(summarize(view.y,view.m,1,15))}</div>
-    <div class="card"><h3>16일 ~ ${n}일<small>${view.m+1}/${n} 지급분</small></h3>${table(summarize(view.y,view.m,16,n))}</div></div>
-  <div class="hint">환산 근무일 = 전일 1일 + 반일 0.5일 (시간제는 일수·시간을 따로 집계)</div>`;
-}
-
-/* ---------- 직원 관리 ---------- */
-function cfgCard(){return `<div class="card cfg" style="margin-top:16px;padding:14px"><b>Google Sheets 연결</b>
-  <div class="hint">연결하면 입력 내용이 구글 시트에 자동 저장되고, 어느 기기에서 열어도 같은 데이터를 봅니다.</div>
-  <label>웹앱 URL (Apps Script 배포 주소)</label><input id="cUrl" placeholder="https://script.google.com/macros/s/.../exec" value="${esc(cfg.url||'')}">
-  <label>비밀 토큰 (Code.gs의 TOKEN과 동일, 없으면 비워두기)</label><input id="cTok" value="${esc(cfg.token||'')}">
-  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="cSave">연결·저장</button><button id="cPull">시트에서 다시 불러오기</button><button id="cPush">현재 데이터를 시트에 덮어쓰기</button><button id="cOff">연결 해제</button></div>
-  <details><summary>설정 방법</summary><ol>
-    <li>구글 시트를 새로 만든다.</li>
-    <li>메뉴 <b>확장 프로그램 → Apps Script</b>를 열고 저장소의 <code>apps-script/Code.gs</code> 내용을 붙여넣는다. (원하면 <code>TOKEN</code>에 비밀 문자열 입력)</li>
-    <li><b>배포 → 새 배포 → 유형: 웹 앱</b>, 실행 사용자 <b>나</b>, 액세스 권한 <b>모든 사용자</b>로 배포하고 권한을 승인한다.</li>
-    <li>발급된 <code>/exec</code> URL을 위 칸에 붙여넣고 <b>연결·저장</b>을 누른다. 시트가 비어 있으면 현재 데이터가 자동으로 올라간다.</li>
-  </ol><div class="hint">시트의 '직원', '근무기록' 탭이 자동 생성됩니다. 시트에서 직접 수정한 내용은 "시트에서 다시 불러오기"(또는 새로고침)로 반영됩니다.</div></details></div>`}
-function renderStaff(){
-  $('#tab-staff').innerHTML=`<div class="card"><h3>직원 목록 <button id="addBtn" class="primary" style="float:right;padding:3px 10px">+ 직원 추가</button></h3>
-  <div class="scroll"><table><thead><tr><th>이름</th><th>구분</th><th>국적</th><th></th></tr></thead><tbody>
-  ${db.staff.map((s,i)=>`<tr><td>${esc(s.name)}</td><td>${esc(s.grp)}</td><td style="text-align:left">${esc(s.nat)}</td><td><button data-del="${i}">삭제</button></td></tr>`).join('')}
-  </tbody></table></div></div>
-  ${HOSTED?'<div class="card" style="margin-top:16px;padding:14px"><b>Google Sheets</b><div class="hint">이 페이지는 Apps Script 웹앱으로 실행 중이며, 입력 내용은 연결된 구글 시트(\'직원\', \'근무기록\' 탭)에 자동 저장됩니다.</div></div>':cfgCard()}
-  <div class="card" style="margin-top:16px;padding:14px"><b>데이터 백업</b>
-  <div class="hint">데이터는 이 브라우저에 저장됩니다. 다른 기기로 옮기거나 보관하려면 백업 파일을 내려받으세요.</div>
-  <button id="exp">백업 내려받기 (JSON)</button> <button id="expCsv">이번 달 합계 CSV</button>
-  <label class="hint" style="display:inline-block;margin-left:8px">복원: <input type="file" id="imp" accept=".json"></label></div>`;
-  $('#addBtn').onclick=()=>{$('#grpList').innerHTML=groups().map(g=>`<option value="${esc(g)}">`).join('');$('#dlg').showModal()};
-  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
-    const s=db.staff[b.dataset.del];
-    if(confirm(`${s.name} 직원을 목록에서 삭제할까요? (기존 근무기록은 남지만 집계에는 나타나지 않습니다)`)){db.staff.splice(b.dataset.del,1);save();markStaff();renderStaff()}
+  const ym=ymk(view.y,view.m),P=calc(ym,pv.per),gl=groups(),noWage=!(+S.cfg.wageSeasonal)&&!(+S.cfg.wageOther);
+  $('#title').textContent=`${view.y}년 ${view.m+1}월`;
+  let h=noWage?'<div class="warnbox">일당이 설정되지 않아 급여가 0원으로 계산됩니다. <b>설정 → 급여 기준</b>에서 일당을 입력하세요.</div>':'';
+  h+=`<div class="seg2"><button data-per="1" class="${pv.per===1?'on':''}">${view.m+1}/15 지급 (1~15일)</button><button data-per="2" class="${pv.per===2?'on':''}">${view.m+1}/${P.last} 지급 (16~${P.last}일)</button></div>
+   <div class="sum" id="psum">${sumHTML(P.t)}</div>
+   <div class="bulk"><button class="pri" data-payall>미지급 전원 지급처리</button><button data-paysel>선택 지급처리</button><button data-cancelsel>선택 지급취소</button><span class="sp">일당: 계절 ${won(S.cfg.wageSeasonal)}원 · 그 외 ${won(S.cfg.wageOther)}원 · 시간제는 일당÷${S.cfg.partBase}시간</span></div>
+   <div class="card tbl"><table><thead><tr><th><input type="checkbox" id="selall"></th><th class="l">이름</th><th class="l">근무내역</th><th>환산일</th><th>일당</th><th>급여</th><th>수당</th><th>알바비</th><th>합계</th><th class="l">지급</th></tr></thead><tbody>`;
+  gl.forEach(g=>{
+    const rs=P.rows.filter(r=>r.p.grp===g);if(!rs.length)return;
+    h+=`<tr class="gr"><td colspan="8">${esc(g)} (${rs.length}명)</td><td class="r" colspan="2">₩${won(rs.reduce((a,r)=>a+r.total,0))}</td></tr>`+rs.map(payRow).join('');
   });
-  if(!HOSTED){
-  $('#cSave').onclick=()=>{
-    const url=$('#cUrl').value.trim();
-    if(!/^https:\/\/script\.google\.com\//.test(url)){alert('Apps Script 웹앱 URL(https://script.google.com/...)을 입력하세요.');return}
-    cfg={url,token:$('#cTok').value.trim()};localStorage.setItem(CFG_KEY,JSON.stringify(cfg));pullFromSheet();
-  };
-  $('#cPull').onclick=()=>{if(!cfg.url)return alert('먼저 연결하세요.');if(confirm('시트 내용으로 현재 화면 데이터를 교체할까요?'))pullFromSheet()};
-  $('#cPush').onclick=async()=>{if(!cfg.url)return alert('먼저 연결하세요.');if(confirm('현재 데이터로 시트 내용을 모두 덮어쓸까요?')){markAll();await flush()}};
-  $('#cOff').onclick=()=>{if(confirm('연결을 해제할까요? (시트 데이터는 그대로 남습니다)')){cfg={};localStorage.removeItem(CFG_KEY);sync.days.clear();sync.staff=sync.all=false;saveDirty();setStatus('off');renderStaff()}};
+  $('#v-pay').innerHTML=h+`</tbody></table></div><div class="hint">수당·알바비는 급여와 별도로 입력하며 입력 즉시 합계에 반영됩니다. 지급처리 후에는 금액이 잠기고, 취소하면 다시 수정할 수 있습니다.</div>`;
+}
+function refreshPay(){
+  const P=calc(ymk(view.y,view.m),pv.per);$('#psum').innerHTML=sumHTML(P.t);
+  P.rows.forEach(r=>{const tr=document.querySelector(`#v-pay tr[data-n="${CSS.escape(r.p.name)}"]`);if(!tr)return;
+    tr.querySelector('[data-c=total]').innerHTML=`<b>${won(r.total)}</b>`;tr.classList.toggle('zero',!r.total);
+    const pb=tr.querySelector('[data-pay]');if(pb)pb.disabled=!r.total;const cb=tr.querySelector('[data-sel]');if(cb)cb.disabled=!r.total});
+}
+function doPay(names,paid){
+  const ym=ymk(view.y,view.m),P=calc(ym,pv.per),rs=P.rows.filter(r=>names.includes(r.p.name)&&r.paid!==paid&&(!paid||r.total>0));
+  if(!rs.length){alert(paid?'지급처리할 대상이 없습니다.':'취소할 대상이 없습니다.');return}
+  const sum=rs.reduce((a,r)=>a+r.total,0);
+  if(!confirm(`${rs.length}명 · ₩${won(sum)}\n${rs.map(r=>r.p.name).join(', ')}\n\n${paid?'지급 처리할까요?':'지급을 취소할까요?'}`))return;
+  rs.forEach(r=>{const x=payW(ym,pv.per,r.p.name);if(paid){x.paid=true;x.paidAt=TODAY;x.amt=r.base}else{delete x.paid;delete x.paidAt;delete x.amt}});
+  touch('p:'+ym);pv.sel.clear();renderPay();
+}
+const rowName=e=>e.target.closest('tr[data-n]')?.dataset.n;
+$('#v-pay').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const n=rowName(e),ym=ymk(view.y,view.m);
+  if(b.dataset.per){pv.per=+b.dataset.per;pv.sel.clear();renderPay()}
+  else if(b.hasAttribute('data-pay'))doPay([n],true);
+  else if(b.hasAttribute('data-cancel'))doPay([n],false);
+  else if(b.hasAttribute('data-payall'))doPay(calc(ym,pv.per).rows.map(r=>r.p.name),true);
+  else if(b.hasAttribute('data-paysel'))doPay([...pv.sel],true);
+  else if(b.hasAttribute('data-cancelsel'))doPay([...pv.sel],false);
+});
+$('#v-pay').addEventListener('input',e=>{
+  const f=e.target.dataset.pf;if(!f)return;const ym=ymk(view.y,view.m),x=payW(ym,pv.per,rowName(e));
+  const v=parseAmt(e.target.value);if(v)x[f]=v;else delete x[f];touch('p:'+ym);refreshPay();
+});
+$('#v-pay').addEventListener('change',e=>{
+  if(e.target.id==='selall'){const P=calc(ymk(view.y,view.m),pv.per);pv.sel=new Set(e.target.checked?P.rows.filter(r=>!r.paid&&r.total).map(r=>r.p.name):[]);renderPay()}
+  else if(e.target.hasAttribute('data-sel')){const n=rowName(e);e.target.checked?pv.sel.add(n):pv.sel.delete(n)}
+});
+</script>
+<script>
+/* ===== 6. 연간 현황 ===== */
+const yv={mode:'sum',paidOnly:false};
+function yearData(y){
+  const map=new Map();
+  for(let m=0;m<12;m++)for(const per of[1,2]){
+    for(const r of calc(ymk(y,m),per).rows){
+      let e=map.get(r.p.name);if(!e){e={p:r.p,mo:Array(12).fill(null)};map.set(r.p.name,e)}
+      const a=e.mo[m]||(e.mo[m]={days:0,base:0,allow:0,alba:0,total:0});a.days+=r.days;
+      if(!yv.paidOnly||r.paid){a.base+=r.base;a.allow+=r.allow;a.alba+=r.alba;a.total+=r.total}
+    }
   }
-  $('#exp').onclick=()=>download('hr-backup.json',JSON.stringify(db),'application/json');
-  $('#expCsv').onclick=()=>{
-    const n=daysIn(view.y,view.m);
-    const row=(label,a,b)=>summarize(view.y,view.m,a,b).map(o=>[label,o.s.name,o.s.grp,o.full,o.half,o.part,o.hours,o.eq].join(','));
-    const csv='﻿기간,이름,구분,전일,반일,시간제일수,시간제시간,환산근무일\n'+[...row('1~15일',1,15),...row(`16~${n}일`,16,n)].join('\n');
-    download(`근무합계-${view.y}-${pad(view.m+1)}.csv`,csv,'text/csv');
-  };
-  $('#imp').onchange=e=>{
-    const f=e.target.files[0];if(!f)return;
-    f.text().then(t=>{const d=JSON.parse(t);if(!d.staff||!d.rec)throw 0;if(confirm('현재 데이터를 백업 파일 내용으로 덮어쓸까요?')){db=d;save();markAll();renderAll()}}).catch(()=>alert('올바른 백업 파일이 아닙니다.'));
-  };
+  const g=groups();return[...map.values()].sort((a,b)=>g.indexOf(a.p.grp)-g.indexOf(b.p.grp));
 }
-function download(name,text,type){
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();
+const KEYS=['days','base','allow','alba','total'];
+function yCell(a,p){
+  if(!a)return`<span class="na">${p&&p.grp===S.cfg.seasonGroup?'비수기':'–'}</span>`;
+  if(yv.mode==='sum')return`<div class="yc"><b class="${a.days?'':'na'}">${a.days?num(a.days)+'일':'–'}</b><small>${a.total?won(a.total):''}</small></div>`;
+  const v=a[yv.mode];return v?(yv.mode==='days'?num(v)+'일':won(v)):'<span class="na">–</span>';
 }
+function renderYear(){
+  const y=view.y,data=yearData(y),cm=y===NOW.getFullYear()?NOW.getMonth():-1;
+  $('#title').textContent=`${y}년`;
+  const sumAll=KEYS.map(k=>data.reduce((s,e)=>s+e.mo.reduce((t,a)=>t+(a?a[k]:0),0),0));
+  const modes={sum:'종합 (일수·총액)',days:'근무일수',base:'급여',allow:'수당',alba:'알바비',total:'총 지급액'};
+  let h=`<div class="sum"><div><small>연간 환산 근무일</small><b>${num(sumAll[0])}일</b></div><div><small>급여</small><b>₩${won(sumAll[1])}</b></div><div><small>수당</small><b>₩${won(sumAll[2])}</b></div><div><small>알바비</small><b>₩${won(sumAll[3])}</b></div><div class="okc"><small>총 지급액</small><b>₩${won(sumAll[4])}</b></div></div>
+   <div class="bulk"><div class="seg2">${Object.entries(modes).map(([k,v])=>`<button data-ym="${k}" class="${yv.mode===k?'on':''}">${v}</button>`).join('')}</div>
+   <label><input type="checkbox" id="paidOnly" ${yv.paidOnly?'checked':''}> 지급완료분만 집계</label><button class="sp" id="ycsv" style="margin-left:auto">CSV 내려받기</button></div>
+   <div class="card tbl"><table class="ytbl"><thead><tr><th class="l c1">이름</th>${Array.from({length:12},(_,i)=>`<th class="${i===cm?'cur':''}">${i+1}월</th>`).join('')}<th class="tt">연 합계</th></tr></thead><tbody>`;
+  groups().forEach(g=>{
+    const es=data.filter(e=>e.p.grp===g);if(!es.length)return;
+    h+=`<tr class="gr"><td class="c1" colspan="14">${esc(g)}</td></tr>`;
+    es.forEach(e=>{
+      const t=e.mo.reduce((s,a)=>{if(a)KEYS.forEach(k=>s[k]+=a[k]);return s},{days:0,base:0,allow:0,alba:0,total:0});
+      h+=`<tr><td class="l c1"><b>${esc(e.p.name)}</b>${e.p.active===false?'<small>비활성</small>':''}</td>${e.mo.map((a,i)=>`<td class="${i===cm?'cur':''}">${yCell(a,e.p)}</td>`).join('')}<td class="tt">${yCell(t)}</td></tr>`;
+    });
+  });
+  const colT=Array.from({length:12},(_,m)=>data.reduce((s,e)=>{const a=e.mo[m];if(a)KEYS.forEach(k=>s[k]+=a[k]);return s},{days:0,base:0,allow:0,alba:0,total:0}));
+  const all=colT.reduce((s,a)=>{KEYS.forEach(k=>s[k]+=a[k]);return s},{days:0,base:0,allow:0,alba:0,total:0});
+  $('#v-year').innerHTML=h+`</tbody><tfoot><tr><td class="l c1">월 합계</td>${colT.map(a=>`<td>${yCell(a)}</td>`).join('')}<td class="tt">${yCell(all)}</td></tr></tfoot></table></div>
+   <div class="hint">금액은 근무기록 × 일당 + 수당 + 알바비 기준이며 계절근로는 이용기간(${S.cfg.seasonFrom}~${S.cfg.seasonTo}월) 밖에서 '·'로 표시됩니다.</div>`;
+}
+$('#v-year').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.ym){yv.mode=b.dataset.ym;renderYear()}
+  else if(b.id==='ycsv'){
+    const rows=[['이름','구분',...Array.from({length:12},(_,i)=>[`${i+1}월 일수`,`${i+1}월 급여`,`${i+1}월 수당`,`${i+1}월 알바비`]).flat(),'합계 일수','합계 급여','합계 수당','합계 알바비','합계 총액']];
+    yearData(view.y).forEach(e=>{const t=Array(5).fill(0);const cells=e.mo.flatMap(a=>{if(!a)return['','','',''];KEYS.forEach((k,i)=>t[i]+=a[k]);return[a.days,a.base,a.allow,a.alba]});rows.push([e.p.name,e.p.grp,...cells,...t])});
+    dl(`연간현황-${view.y}.csv`,'﻿'+rows.map(r=>r.join(',')).join('\n'),'text/csv');
+  }
+});
+$('#v-year').addEventListener('change',e=>{if(e.target.id==='paidOnly'){yv.paidOnly=e.target.checked;renderYear()}});
+</script>
+<script>
+/* ===== 7. 설정 · 직원 · 백업 ===== */
+function renderSettings(){
+  const c=S.cfg,gl=groups(),months=Array.from({length:12},(_,i)=>i+1);
+  const mo=(k)=>`<select data-cfg="${k}">${months.map(m=>`<option value="${m}" ${+c[k]===m?'selected':''}>${m}월</option>`).join('')}</select>`;
+  $('#v-set').innerHTML=`<div class="set">
+  <div class="card"><h3>급여 기준</h3>
+   <div class="f"><label>계절근로 일당(원)</label><input data-cfg="wageSeasonal" data-n inputmode="numeric" value="${c.wageSeasonal||''}"></div>
+   <div class="f"><label>그 외 일당(원)</label><input data-cfg="wageOther" data-n inputmode="numeric" value="${c.wageOther||''}"></div>
+   <div class="f"><label>시간제 환산 기준</label><input data-cfg="partBase" data-n inputmode="numeric" value="${c.partBase}"></div>
+   <div class="hint">전일 1일, 반일 0.5일로 계산하고 시간제는 일당 ÷ 기준시간 × 근무시간으로 계산합니다. 사람별 일당은 아래 직원 표에서 따로 지정할 수 있습니다.</div></div>
+  <div class="card"><h3>휴무일 · 계절근로</h3>
+   <div class="f"><label>정기 휴무 요일</label><div class="days">${DOW.map((d,i)=>`<label><input type="checkbox" data-off="${i}" ${c.offDays.includes(i)?'checked':''}>${d}</label>`).join('')}</div></div>
+   <div class="f"><label>계절근로 그룹</label><select data-cfg="seasonGroup">${gl.map(g=>`<option ${g===c.seasonGroup?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+   <div class="f"><label>이용 기간</label><div style="display:flex;gap:6px;align-items:center">${mo('seasonFrom')} ~ ${mo('seasonTo')}</div></div>
+   <div class="hint">특정 날짜만 휴무로 바꾸려면 캘린더에서 날짜를 선택해 '휴무일로 지정'을 누르세요.</div></div>
+  <div class="card"><h3>그룹 표시 순서</h3>${gl.map((g,i)=>`<div class="gl"><span>${esc(g)}</span><button data-gm="${g}|-1" ${i?'':'disabled'}>▲</button><button data-gm="${g}|1" ${i<gl.length-1?'':'disabled'}>▼</button></div>`).join('')}</div>
+  <div class="card"><h3>데이터</h3><div style="display:flex;gap:8px;flex-wrap:wrap">
+   <button id="bk">백업 내려받기 (JSON)</button><label class="hint" style="margin:0">복원 <input type="file" id="rs" accept=".json"></label>
+   ${HOSTED?'<button id="xs">구글 시트로 내보내기</button>':''}</div>
+   <div class="hint">${HOSTED?'데이터는 구글 시트의 \'데이터\' 탭에 자동 저장됩니다. 내보내기는 보기 좋은 표(내보내기_근무 / 내보내기_급여 탭)를 새로 만듭니다.':'지금은 이 브라우저에만 저장됩니다.'}</div></div>
+  <div class="card" style="grid-column:1/-1"><h3>직원 <button class="pri" id="addBtn" style="float:right;padding:3px 12px">+ 추가</button></h3>
+   <div class="tbl"><table><thead><tr><th class="l">이름</th><th class="l">국적</th><th class="l">구분</th><th>개인 일당(선택)</th><th>활성</th></tr></thead><tbody>
+   ${S.staff.map((p,i)=>`<tr data-i="${i}"><td class="l"><b>${esc(p.name)}</b></td><td class="l"><input data-sf="nat" value="${esc(p.nat)}" style="width:90px"></td>
+    <td class="l"><input data-sf="grp" list="grpList" value="${esc(p.grp)}" style="width:90px"></td><td><input class="amt" data-sf="wage" inputmode="numeric" value="${p.wage||''}" placeholder="기본값"></td>
+    <td><input type="checkbox" data-sf="active" ${p.active!==false?'checked':''}></td></tr>`).join('')}</tbody></table></div>
+   <div class="hint">퇴사자는 삭제하지 말고 '활성'을 해제하세요. 과거 기록과 급여 내역이 그대로 유지됩니다.</div></div></div>`;
+  $('#grpList').innerHTML=gl.map(g=>`<option value="${esc(g)}">`).join('');
+}
+$('#v-set').addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.cfg){const k=t.dataset.cfg;S.cfg[k]=t.hasAttribute('data-n')?parseAmt(t.value):isNaN(t.value)?t.value:+t.value;touch('cfg');renderSettings()}
+  else if(t.hasAttribute('data-off')){const s=new Set(S.cfg.offDays);t.checked?s.add(+t.dataset.off):s.delete(+t.dataset.off);S.cfg.offDays=[...s].sort();touch('cfg')}
+  else if(t.dataset.sf){
+    const p=S.staff[t.closest('tr').dataset.i],f=t.dataset.sf;
+    p[f]=f==='active'?t.checked:f==='wage'?parseAmt(t.value)||0:t.value.trim();touch('staff');renderSettings();
+  }
+  else if(t.id==='rs')restore(t.files[0]);
+});
+$('#v-set').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.gm){const[g,d]=b.dataset.gm.split('|');moveGroup(g,+d);renderSettings()}
+  else if(b.id==='addBtn')$('#dlg').showModal();
+  else if(b.id==='bk')dl(`인력관리-백업-${TODAY}.json`,JSON.stringify({v:2,staff:S.staff,cfg:S.cfg,months:S.months,pays:S.pays}),'application/json');
+  else if(b.id==='xs')exportSheets();
+});
 $('#addForm').addEventListener('submit',e=>{
   if(e.submitter.value!=='ok')return;
   const name=$('#aName').value.trim();
-  if(!name||db.staff.some(s=>s.name===name)){alert('이름이 비어있거나 이미 존재합니다.');e.preventDefault();return}
-  db.staff.push({name,nat:$('#aNat').value.trim(),grp:$('#aGrp').value.trim(),memo:''});
-  save();markStaff();e.target.reset();renderStaff();renderCal();renderPanel();
+  if(!name||S.staff.some(p=>p.name===name)){alert('이름이 비어있거나 이미 존재합니다.');e.preventDefault();return}
+  S.staff.push({name,nat:$('#aNat').value.trim(),grp:$('#aGrp').value.trim(),active:true});
+  touch('staff');e.target.reset();renderAll();
 });
-
-/* ---------- 공통 ---------- */
-function renderAll(){
-  $('#monthbar').classList.toggle('hidden',tab==='staff');
-  for(const t of ['cal','month','pay','staff'])$('#tab-'+t).classList.toggle('hidden',t!==tab);
-  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-  if(tab==='cal'){renderCal();renderPanel()}
-  if(tab==='month')renderMonth();
-  if(tab==='pay')renderPay();
-  if(tab==='staff')renderStaff();
-  $('#mtitle').textContent=`${view.y}년 ${view.m+1}월`;
+function restore(f){
+  if(!f)return;
+  f.text().then(t=>{
+    const d=JSON.parse(t);if(!d.staff||!d.months)throw 0;
+    if(!confirm('현재 데이터를 백업 파일 내용으로 덮어쓸까요?'))return;
+    S.staff=d.staff;S.cfg={...DEFAULT_CFG,...d.cfg};S.months=d.months;S.pays=d.pays||{};allKeys().forEach(touch);renderAll();
+  }).catch(()=>alert('올바른 백업 파일이 아닙니다. (구버전 백업은 복원할 수 없습니다)'));
 }
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;renderAll()});
-const shift=k=>{const d=new Date(view.y,view.m+k,1);view={y:d.getFullYear(),m:d.getMonth()};renderAll()};
-$('#prev').onclick=()=>shift(-1);$('#next').onclick=()=>shift(1);
-$('#goToday').onclick=()=>{view={y:now.getFullYear(),m:now.getMonth()};sel=ds(now.getFullYear(),now.getMonth(),now.getDate());renderAll()};
-$('#sstat').onclick=()=>{cfg.url?(sync.days.size||sync.staff||sync.all?flush():pullFromSheet()):(tab='staff',renderAll())};
-setStatus(cfg.url?'busy':'off');
+async function exportSheets(){
+  const work=[['날짜','이름','구분','근무형태','시간','메모']],pay=[['월','지급기준','이름','구분','전일','반일','시간제(일)','시간제(시간)','일당','급여','수당','알바비','합계','지급여부','지급일']];
+  Object.keys(S.months).sort().forEach(ym=>{
+    const rec=S.months[ym].rec;
+    Object.keys(rec).sort().forEach(d=>S.staff.forEach(p=>{const x=rec[d][p.name];if(x)work.push([d,p.name,p.grp,TYPES[x.t],x.h||'',x.m||''])}));
+  });
+  [...new Set([...Object.keys(S.months),...Object.keys(S.pays)])].sort().forEach(ym=>[1,2].forEach(per=>{
+    const P=calc(ym,per);P.rows.forEach(r=>{if(r.total||r.days)pay.push([ym,per===1?'15일':'말일',r.p.name,r.p.grp,r.full,r.half,r.part,r.hours,r.wage,r.base,r.allow,r.alba,r.total,r.paid?'지급':'미지급',r.paidAt])});
+  }));
+  try{setSync('busy');await gs('apiExport',{'내보내기_근무':work,'내보내기_급여':pay});setSync('ok');alert('구글 시트에 내보냈습니다.')}catch(e){setSync('err',e.message);alert('내보내기 실패: '+e.message)}
+}
+</script>
+<script>
+/* ===== 8. 화면 전환 · 초기화 ===== */
+function setTab(t){tab=t;renderAll()}
+function renderAll(){
+  for(const t of['cal','pay','year','set'])$('#v-'+t).hidden=t!==tab;
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  $('#bar').hidden=tab==='set';$('#legend').hidden=tab!=='cal';
+  if(tab==='cal'){renderCal();renderPanel()}else if(tab==='pay')renderPay();else if(tab==='year')renderYear();else renderSettings();
+}
+function step(k){
+  if(tab==='year')view.y+=k;
+  else{const d=new Date(view.y,view.m+k,1);view={y:d.getFullYear(),m:d.getMonth()};
+    sel=view.y===NOW.getFullYear()&&view.m===NOW.getMonth()?TODAY:ymd(view.y,view.m,1);pv.sel.clear()}
+  renderAll();
+}
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.tab)};
+$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
+$('#today').onclick=()=>{view={y:NOW.getFullYear(),m:NOW.getMonth()};sel=TODAY;renderAll()};
+$('#sync').onclick=()=>{if(!HOSTED)return;dirty.size?flush():pull().then(renderAll)};
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){cacheNow();flush()}
+  else if(HOSTED&&!dirty.size&&!flushing)pull().then(()=>{if(!document.activeElement||!/INPUT|TEXTAREA/.test(document.activeElement.tagName))renderAll()});
+});
+loadLocal();
+setSync(HOSTED?'load':'local');
 renderAll();
-pullFromSheet();
+pull().then(renderAll);
 </script>
 </body>
 </html>
-<!--END-OF-INDEX-->

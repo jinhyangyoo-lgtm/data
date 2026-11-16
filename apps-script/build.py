@@ -1,25 +1,30 @@
 #!/usr/bin/env python3
-"""루트 index.html(단일 파일)을 Apps Script용 4개 파일(index/style/app1/app2)로 나눈다.
-붙여넣기가 잘리는 것을 막기 위해 파일당 줄 수를 줄이는 용도. 사용: python3 apps-script/build.py"""
+"""루트 index.html(단일 파일)을 Apps Script용 여러 파일(index/style*/app*)로 나눈다.
+붙여넣기가 잘리는 것을 막기 위해 파일당 분량을 줄이는 용도. 사용: python3 apps-script/build.py"""
 import re, pathlib
-root = pathlib.Path(__file__).resolve().parent.parent
-out = pathlib.Path(__file__).resolve().parent
-s = (root / 'index.html').read_text(encoding='utf-8').replace('<!--END-OF-INDEX-->', '').rstrip() + '\n'
-style = re.search(r'<style>.*?</style>', s, re.S).group(0)
-script = re.search(r'<script>.*?</script>', s, re.S).group(0)
-body = script[len('<script>'):-len('</script>')].strip('\n')
-lines = body.split('\n')
-cut = next(i for i, l in enumerate(lines) if l.startswith('/* ---------- 일별 입력 패널'))
-app1 = '<script>\n' + '\n'.join(lines[:cut]) + '\n</script>\n'
-app2 = '<script>\n' + '\n'.join(lines[cut:]) + '\n</script>\n'
-index = s.replace(style, "<?!= include_('style') ?>").replace(script, "<?!= include_('app1') ?>\n<?!= include_('app2') ?>")
-# 끝 표식: HtmlService가 HTML 주석을 지우므로 주석이 아닌 형태로 넣는다
-tail = {
-    'index': None,
-    'style': '<style>#END-OF-style{display:none}</style>\n',
-    'app1': "<script>'END-OF-app1';</script>\n",
-    'app2': "<script>'END-OF-app2';</script>\n",
-}
+here = pathlib.Path(__file__).resolve().parent
+s = (here.parent / 'index.html').read_text(encoding='utf-8')
+for old in list(here.glob('style*.html')) + list(here.glob('app*.html')):
+    old.unlink()
+parts = {}
+def split(tag, prefix, text):
+    n = 0
+    def sub(m):
+        nonlocal n
+        n += 1
+        name = f'{prefix}{n}'
+        parts[name] = m.group(0)
+        return f"<?!= include_('{name}') ?>"
+    return re.sub(rf'<{tag}>.*?</{tag}>', sub, text, flags=re.S)
+index = split('script', 'app', split('style', 'style', s))
 index = index.replace('</body>', '<div id="END-OF-index" hidden></div>\n</body>')
-for name, text in [('index', index), ('style', style + '\n'), ('app1', app1), ('app2', app2)]:
-    (out / f'{name}.html').write_text(text + (tail[name] or ''), encoding='utf-8')
+# 끝 표식: HtmlService가 HTML 주석을 지우므로 주석이 아닌 형태로 넣는다
+for name, text in parts.items():
+    tail = f"<style>#END-OF-{name}{{display:none}}</style>\n" if name.startswith('style') else f"<script>'END-OF-{name}';</script>\n"
+    (here / f'{name}.html').write_text(text.rstrip('\n') + '\n' + tail, encoding='utf-8')
+(here / 'index.html').write_text(index, encoding='utf-8')
+names = ['index'] + list(parts)
+code = (here / 'Code.gs').read_text(encoding='utf-8')
+code = re.sub(r"const PARTS = \[.*?\];", "const PARTS = [" + ', '.join(f"'{n}'" for n in names) + "];", code, count=1)
+(here / 'Code.gs').write_text(code, encoding='utf-8')
+print(names)
