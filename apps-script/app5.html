@@ -1,6 +1,6 @@
 <script>
 /* ===== 5. 급여 지급 ===== */
-const pv={per:NOW.getDate()<=15?1:2,sel:new Set()};
+const pv={per:NOW.getDate()<=15?1:2,sel:new Set(),date:TODAY};
 const parseAmt=v=>Number(String(v).replace(/[^0-9.-]/g,''))||0;
 function payRow(r){
   const n=esc(r.p.name),dis=r.paid?'disabled':'';
@@ -11,7 +11,7 @@ function payRow(r){
    <td><input class="amt" data-pf="allow" inputmode="numeric" value="${r.allow?won(r.allow):''}" placeholder="0" ${dis}></td>
    <td><input class="amt" data-pf="alba" inputmode="numeric" value="${r.alba?won(r.alba):''}" placeholder="0" ${dis}></td>
    <td data-c="total"><b>${won(r.total)}</b></td>
-   <td class="l">${r.paid?`<span class="ok">✔ ${esc(r.paidAt.slice(5))} 지급</span>${r.changed?'<span class="warn" title="지급 이후 근무기록이 변경되었습니다">⚠변경</span>':''} <button data-cancel>취소</button>`:`<button class="pri" data-pay ${r.total?'':'disabled'}>지급</button>`}</td></tr>`;
+   <td class="l">${r.paid?`<span class="ok">✔</span> <input type="date" class="pd" data-pd value="${esc(r.paidAt)}" title="지급일 변경">${r.changed?'<span class="warn" title="지급 이후 근무기록이 변경되었습니다">⚠변경</span>':''} <button data-cancel>취소</button>`:`<button class="pri" data-pay ${r.total?'':'disabled'}>지급</button>`}</td></tr>`;
 }
 function sumHTML(t){
   return`<div><small>대상 / 지급완료</small><b>${t.n}명 / ${t.pn}명</b></div><div><small>급여 (근무분)</small><b>₩${won(t.base)}</b></div>
@@ -23,7 +23,7 @@ function renderPay(){
   let h=noWage?'<div class="warnbox">일당이 설정되지 않아 급여가 0원으로 계산됩니다. <b>설정 → 급여 기준</b>에서 일당을 입력하세요.</div>':'';
   h+=`<div class="seg2"><button data-per="1" class="${pv.per===1?'on':''}">${view.m+1}/15 지급 (1~15일)</button><button data-per="2" class="${pv.per===2?'on':''}">${view.m+1}/${P.last} 지급 (16~${P.last}일)</button></div>
    <div class="sum" id="psum">${sumHTML(P.t)}</div>
-   <div class="bulk"><button class="pri" data-payall>미지급 전원 지급처리</button><button data-paysel>선택 지급처리</button><button data-cancelsel>선택 지급취소</button><span class="sp">일당: 계절 ${won(S.cfg.wageSeasonal)}원 · 그 외 ${won(S.cfg.wageOther)}원 · 시간제는 일당÷${S.cfg.partBase}시간</span></div>
+   <div class="bulk"><label>지급일 <input type="date" id="paydate" value="${pv.date}"></label><button class="pri" data-payall>미지급 전원 지급처리</button><button data-paysel>선택 지급처리</button><button data-cancelsel>선택 지급취소</button><span class="sp">일당: 계절 ${won(S.cfg.wageSeasonal)}원 · 그 외 ${won(S.cfg.wageOther)}원 · 시간제는 일당÷${S.cfg.partBase}시간</span></div>
    <div class="card tbl"><table><thead><tr><th><input type="checkbox" id="selall"></th><th class="l">이름</th><th class="l">근무내역</th><th>환산일</th><th>일당</th><th>급여</th><th>수당</th><th>알바비</th><th>합계</th><th class="l">지급</th></tr></thead><tbody>`;
   gl.forEach(g=>{
     const rs=P.rows.filter(r=>r.p.grp===g);if(!rs.length)return;
@@ -40,9 +40,10 @@ function refreshPay(){
 function doPay(names,paid){
   const ym=ymk(view.y,view.m),P=calc(ym,pv.per),rs=P.rows.filter(r=>names.includes(r.p.name)&&r.paid!==paid&&(!paid||r.total>0));
   if(!rs.length){alert(paid?'지급처리할 대상이 없습니다.':'취소할 대상이 없습니다.');return}
+  if(paid&&!/^\d{4}-\d{2}-\d{2}$/.test(pv.date)){alert('지급일을 선택하세요.');return}
   const sum=rs.reduce((a,r)=>a+r.total,0);
-  if(!confirm(`${rs.length}명 · ₩${won(sum)}\n${rs.map(r=>r.p.name).join(', ')}\n\n${paid?'지급 처리할까요?':'지급을 취소할까요?'}`))return;
-  rs.forEach(r=>{const x=payW(ym,pv.per,r.p.name);if(paid){x.paid=true;x.paidAt=TODAY;x.amt=r.base}else{delete x.paid;delete x.paidAt;delete x.amt;delete x.fixed}});
+  if(!confirm(`${rs.length}명 · ₩${won(sum)}\n${rs.map(r=>r.p.name).join(', ')}\n\n${paid?`지급일 ${pv.date}로 지급 처리할까요?`:'지급을 취소할까요?'}`))return;
+  rs.forEach(r=>{const x=payW(ym,pv.per,r.p.name);if(paid){x.paid=true;x.paidAt=pv.date;x.amt=r.base}else{delete x.paid;delete x.paidAt;delete x.amt;delete x.fixed}});
   touch('p:'+ym);pv.sel.clear();renderPay();
 }
 const rowName=e=>e.target.closest('tr[data-n]')?.dataset.n;
@@ -60,6 +61,8 @@ $('#v-pay').addEventListener('input',e=>{
   const v=parseAmt(e.target.value);if(v)x[f]=v;else delete x[f];touch('p:'+ym);refreshPay();
 });
 $('#v-pay').addEventListener('change',e=>{
+  if(e.target.id==='paydate'){pv.date=e.target.value;return}
+  if(e.target.dataset.pd!==undefined){const ym=ymk(view.y,view.m);if(e.target.value){payW(ym,pv.per,rowName(e)).paidAt=e.target.value;touch('p:'+ym)}return}
   if(e.target.id==='selall'){const P=calc(ymk(view.y,view.m),pv.per);pv.sel=new Set(e.target.checked?P.rows.filter(r=>!r.paid&&r.total).map(r=>r.p.name):[]);renderPay()}
   else if(e.target.hasAttribute('data-sel')){const n=rowName(e);e.target.checked?pv.sel.add(n):pv.sel.delete(n)}
 });
