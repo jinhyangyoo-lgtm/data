@@ -1,0 +1,175 @@
+<script>
+(function(){
+var LS='inv_cache_v1', D=null, ST={tab:'dash',cm:null,cd:null,f:{who:'',kind:'',st:'run',q:''}};
+var $=function(i){return document.getElementById(i)};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function num(s){var n=parseInt(String(s||'').replace(/[^\d-]/g,''),10);return isNaN(n)?0:n}
+function won(n){return n?n.toLocaleString('ko-KR'):'-'}
+function pd(s){var m=/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/.exec(String(s||''));return m?new Date(+m[1],+m[2]-1,+m[3]):null}
+function ymd(d){return d?d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2):''}
+function sd(d){return d?d.getFullYear()+'.'+(d.getMonth()+1)+'.'+d.getDate():''}
+var TODAY=new Date();TODAY=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
+function diff(d){return Math.round((d-TODAY)/864e5)}
+function dd(n){return n===0?'오늘':n>0?'D-'+n:'D+'+(-n)}
+
+// ---------- 데이터 가공 ----------
+function build(raw){
+  var H={}, I=[], byId={};
+  raw.inv.forEach(function(r){
+    var o={id:r[0],proj:r[1],nick:r[2],who:r[3],kind:r[4],start:pd(r[5]),end:pd(r[6]),payday:r[7],extra:r[8],invee:r[9],corp:r[10],guar:r[11],cname:r[12],clink:r[13],xlink:r[14],memo:r[15],orig:num(r[16]),cur:num(r[17]),depo:r[18]};
+    o.name=o.nick||o.proj;o.conds=[];o.sch=[];o.ext=[];o.hist=[];
+    I.push(o);byId[o.id]=o;
+  });
+  raw.cond.forEach(function(r){var o=byId[r[0]];if(o)o.hist.push({d:pd(r[1]),amt:num(r[2]),rate:r[3],note:r[4]})});
+  raw.ext.forEach(function(r){var o=byId[r[0]];if(o)o.ext.push(r)});
+  var S=raw.sch.map(function(r){
+    var o=byId[r[1]]||{};
+    var done=/완료/.test(r[13])||String(r[6]).toUpperCase()==='TRUE';
+    var amt=num(r[7])||num(r[5])||num(r[12]);
+    var s={sid:r[0],iid:r[1],type:r[2],date:pd(r[9])||pd(r[4])||pd(r[3]),amt:amt,rate:r[11],prin:num(r[10]),status:r[13],done:done,memo:r[8],inv:o};
+    if(o.sch)o.sch.push(s);return s;
+  }).filter(function(s){return s.date});
+  I.forEach(function(o){
+    o.hist.sort(function(a,b){return a.d-b.d});o.sch.sort(function(a,b){return a.date-b.date});
+    var cur=null;o.hist.forEach(function(h){if(h.d<=TODAY)cur=h});o.rate=cur?cur.rate:'';
+    o.running=o.start&&o.end&&o.start<=TODAY&&TODAY<=o.end;
+    o.conds=conds(o);
+  });
+  return {I:I,S:S,byId:byId};
+}
+function conds(o){
+  var c=[];
+  if(o.extra)c.push({t:'만기시 +'+o.extra});
+  for(var i=1;i<o.hist.length;i++){
+    var a=o.hist[i-1],b=o.hist[i];
+    if(b.rate!==a.rate&&b.d>TODAY)c.push({t:sd(b.d)+'~ '+b.rate+' 변경'});
+  }
+  var m=o.memo||'';
+  if(/%/.test(m)&&!/^만기\s*[\d.]+%\s*추가$/.test(m.trim()))c.push({t:m.length>28?m.slice(0,28)+'…':m,full:m});
+  return c;
+}
+function kb(k){return '<span class="b '+(k==='단기'?'s':'l')+'">'+esc(k||'-')+'</span>'}
+function tb(t){var c=t==='원금상환'?'t-p':t==='추가이자'?'t-x':'t-i';return '<span class="b '+c+'">'+esc(t)+'</span>'}
+
+// ---------- 대시보드 ----------
+function dash(){
+  var run=D.I.filter(function(o){return o.running}),who={},tot={s:[0,0],l:[0,0]};
+  run.forEach(function(o){var w=who[o.who]=who[o.who]||{s:[0,0],l:[0,0]},k=o.kind==='단기'?'s':'l';
+    w[k][0]++;w[k][1]+=o.cur;tot[k][0]++;tot[k][1]+=o.cur});
+  var all=tot.s[1]+tot.l[1],allc=tot.s[0]+tot.l[0];
+  var rows=Object.keys(who).sort().map(function(n){var w=who[n],c=w.s[0]+w.l[0],a=w.s[1]+w.l[1];
+    return '<tr><td>'+esc(n)+'</td><td class="n">'+(w.s[0]||'-')+'</td><td class="n">'+won(w.s[1])+'</td><td class="n">'+(w.l[0]||'-')+'</td><td class="n">'+won(w.l[1])+'</td><td class="n"><b>'+c+'건</b></td><td class="n"><b>'+won(a)+'</b></td><td class="n">'+(all?(a/all*100).toFixed(1)+'%':'-')+'</td></tr>'});
+  var mo=D.S.filter(function(s){return s.date.getFullYear()===TODAY.getFullYear()&&s.date.getMonth()===TODAY.getMonth()});
+  var moAmt=mo.reduce(function(a,s){return a+(s.type==='원금상환'?0:s.amt)},0);
+  var pr=D.S.filter(function(s){return s.type==='원금상환'&&!s.done}).sort(function(a,b){return a.date-b.date});
+  var prRows=pr.map(function(s){var n=diff(s.date);
+    return '<tr class="click '+(n<0?'over':'')+'" data-id="'+esc(s.iid)+'"><td>'+sd(s.date)+'</td><td>'+dd(n)+'</td><td>'+kb(s.inv.kind)+'</td><td>'+esc(s.inv.name)+'</td><td>'+esc(s.inv.who)+'</td><td class="n">'+won(s.amt||s.prin)+'</td></tr>'}).join('');
+  var up=D.S.filter(function(s){var n=diff(s.date);return s.type!=='원금상환'&&!s.done&&n>=0&&n<=14}).sort(function(a,b){return a.date-b.date});
+  var upRows=up.map(function(s){return '<tr class="click" data-id="'+esc(s.iid)+'"><td>'+sd(s.date)+'</td><td>'+dd(diff(s.date))+'</td><td>'+kb(s.inv.kind)+tb(s.type)+'</td><td>'+esc(s.inv.name)+'</td><td>'+esc(s.inv.who)+'</td><td class="n">'+won(s.amt)+'</td></tr>'}).join('');
+  var hd='<tr><th>일자</th><th></th><th>구분</th><th>투자</th><th>투자자</th><th class="n">금액</th></tr>';
+  $('dash').innerHTML=
+   '<div class="kpis"><div class="kpi"><span>운용 중 원금 합계</span><b>'+won(all)+'원</b></div><div class="kpi"><span>운용 중 건수</span><b>'+allc+'건</b></div><div class="kpi"><span>이번 달 이자·추가이자 예정</span><b>'+won(moAmt)+'원</b></div></div>'+
+   '<div class="card"><h2>투자자별 현재 투자금액 <span class="muted">(기준일 '+ymd(TODAY)+')</span></h2><div class="scroll"><table><thead><tr><th rowspan="2">투자자</th><th colspan="2" class="n">단기</th><th colspan="2" class="n">장기</th><th colspan="2" class="n">합계</th><th rowspan="2" class="n">비중</th></tr><tr><th class="n">건수</th><th class="n">금액</th><th class="n">건수</th><th class="n">금액</th><th class="n">건수</th><th class="n">금액</th></tr></thead><tbody>'+rows.join('')+'</tbody><tfoot><tr><td>합계</td><td class="n">'+tot.s[0]+'</td><td class="n">'+won(tot.s[1])+'</td><td class="n">'+tot.l[0]+'</td><td class="n">'+won(tot.l[1])+'</td><td class="n">'+allc+'건</td><td class="n">'+won(all)+'</td><td class="n">100%</td></tr></tfoot></table></div></div>'+
+   '<div class="grid2"><div class="card"><h2>원금상환 예정 <span class="muted">('+pr.length+'건)</span></h2><div class="scroll"><table><thead>'+hd+'</thead><tbody>'+(prRows||'<tr><td colspan="6" class="muted">예정 없음</td></tr>')+'</tbody></table></div></div>'+
+   '<div class="card"><h2>14일 내 이자 예정 <span class="muted">('+up.length+'건)</span></h2><div class="scroll"><table><thead>'+hd+'</thead><tbody>'+(upRows||'<tr><td colspan="6" class="muted">예정 없음</td></tr>')+'</tbody></table></div></div></div>';
+}
+
+// ---------- 캘린더 ----------
+function cal(){
+  if(!ST.cm)ST.cm=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
+  var y=ST.cm.getFullYear(),m=ST.cm.getMonth(),first=new Date(y,m,1),start=new Date(y,m,1-first.getDay());
+  var map={};D.S.forEach(function(s){var k=ymd(s.date);(map[k]=map[k]||[]).push(s)});
+  var h='<div class="calh"><button data-nav="-1">◀</button><b>'+y+'년 '+(m+1)+'월</b><button data-nav="1">▶</button><button data-nav="0">오늘</button></div><div class="cg">';
+  '일월화수목금토'.split('').forEach(function(d){h+='<div class="dow">'+d+'</div>'});
+  for(var i=0;i<42;i++){
+    var d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i),k=ymd(d),L=map[k]||[];
+    h+='<div class="'+(d.getMonth()!==m?'oth ':'')+(k===ymd(TODAY)?'today ':'')+(k===ST.cd?'sel':'')+'" data-day="'+k+'"><div class="d">'+d.getDate()+'</div>';
+    L.slice(0,3).forEach(function(s){h+='<span class="chip '+(s.done?'done':'')+'" data-id="'+esc(s.iid)+'">'+kb(s.inv.kind)+(s.type==='원금상환'?'<b style="color:#991b1b">원금</b> ':s.type==='추가이자'?'<b style="color:#5b21b6">추가</b> ':'')+esc(s.inv.name)+'</span>'});
+    if(L.length>3)h+='<span class="more">+'+(L.length-3)+'건 더</span>';
+    h+='</div>';
+  }
+  h+='</div><div id="dayinfo"></div>';
+  $('cal').innerHTML=h;dayinfo();
+}
+function dayinfo(){
+  var k=ST.cd;if(!k){$('dayinfo').innerHTML='';return}
+  var L=D.S.filter(function(s){return ymd(s.date)===k});
+  var t=L.reduce(function(a,s){return a+s.amt},0);
+  $('dayinfo').innerHTML='<div class="card" style="margin-top:12px"><h2>'+k+' · '+L.length+'건 · '+won(t)+'원</h2><div class="scroll"><table><thead><tr><th>구분</th><th>유형</th><th>투자</th><th>투자자</th><th class="n">원금</th><th>이율</th><th class="n">금액</th><th>상태</th></tr></thead><tbody>'+
+   (L.map(function(s){return '<tr class="click" data-id="'+esc(s.iid)+'"><td>'+kb(s.inv.kind)+'</td><td>'+tb(s.type)+'</td><td>'+esc(s.inv.name)+'</td><td>'+esc(s.inv.who)+'</td><td class="n">'+won(s.prin)+'</td><td>'+esc(s.rate)+'</td><td class="n">'+won(s.amt)+'</td><td>'+esc(s.status)+'</td></tr>'}).join('')||'<tr><td colspan="8" class="muted">일정 없음</td></tr>')+'</tbody></table></div></div>';
+}
+
+// ---------- 투자목록 ----------
+function list(){
+  var f=ST.f,wh={};D.I.forEach(function(o){wh[o.who]=1});
+  var L=D.I.filter(function(o){
+    if(f.who&&o.who!==f.who)return false;if(f.kind&&o.kind!==f.kind)return false;
+    if(f.st==='run'&&!o.running)return false;if(f.st==='end'&&o.running)return false;
+    if(f.q&&(o.id+o.proj+o.nick+o.who+o.invee).toLowerCase().indexOf(f.q.toLowerCase())<0)return false;return true});
+  var opt=function(v,t,c){return '<option value="'+esc(v)+'"'+(c===v?' selected':'')+'>'+esc(t)+'</option>'};
+  var h='<div class="bar"><select id="fw">'+opt('','전체 투자자',f.who)+Object.keys(wh).sort().map(function(w){return opt(w,w,f.who)}).join('')+'</select>'+
+   '<select id="fk">'+opt('','단기+장기',f.kind)+opt('단기','단기',f.kind)+opt('장기','장기',f.kind)+'</select>'+
+   '<select id="fs">'+opt('run','운용 중',f.st)+opt('end','종료/예정',f.st)+opt('all','전체',f.st)+'</select>'+
+   '<input id="fq" placeholder="검색" value="'+esc(f.q)+'"></div>'+
+   '<div class="card"><div class="scroll"><table><thead><tr><th>ID</th><th>투자</th><th>투자자</th><th>구분</th><th>시작일</th><th>만기일</th><th>지급일</th><th class="n">현재원금</th><th>현재이율</th><th>계약서</th><th>추가 조건</th></tr></thead><tbody>'+
+   L.map(function(o){return '<tr class="click" data-id="'+esc(o.id)+'"><td>'+esc(o.id)+'</td><td>'+esc(o.name)+'</td><td>'+esc(o.who)+'</td><td>'+kb(o.kind)+'</td><td>'+sd(o.start)+'</td><td>'+sd(o.end)+'</td><td>'+esc(o.payday?o.payday+'일':'')+'</td><td class="n">'+won(o.cur)+'</td><td>'+esc(o.rate)+'</td><td>'+(o.clink?'<a href="'+esc(o.clink)+'" target="_blank" data-stop="1">'+esc(o.cname||'계약서')+'</a>':'<span class="muted">'+esc(o.cname||'-')+'</span>')+'</td><td>'+o.conds.map(function(c){return '<span class="b cond" title="'+esc(c.full||c.t)+'">'+esc(c.t)+'</span>'}).join('')+'</td></tr>'}).join('')+
+   '</tbody><tfoot><tr><td colspan="7">'+L.length+'건</td><td class="n">'+won(L.reduce(function(a,o){return a+o.cur},0))+'</td><td colspan="3"></td></tr></tfoot></table></div></div>';
+  $('list').innerHTML=h;
+  $('fw').onchange=function(){f.who=this.value;list()};$('fk').onchange=function(){f.kind=this.value;list()};$('fs').onchange=function(){f.st=this.value;list()};
+  $('fq').oninput=function(){f.q=this.value;var p=this.selectionStart;list();var q=$('fq');q.focus();q.setSelectionRange(p,p)};
+}
+
+// ---------- 상세 ----------
+function detail(id){
+  var o=D.byId[id];if(!o)return;
+  var kv=function(k,v){return '<div>'+k+'</div><div>'+(v===''||v==null?'<span class="muted">-</span>':v)+'</div>'};
+  var lk=function(u,t){return u?'<a href="'+esc(u)+'" target="_blank">'+esc(t||u)+'</a>':''};
+  var ex=[];
+  o.ext.forEach(function(r){ex.push('연장일 '+esc(r[1])+' · 기존 만기 '+esc(r[2])+' → 새 만기 '+esc(r[3])+' · 원금 '+esc(r[4])+' → '+esc(r[5])+(num(r[6])?' (상환 '+esc(r[6])+')':'')+' · 이율 '+esc(r[7])+' → '+esc(r[8])+(r[11]?' · 새 계약서 '+esc(r[11]):'')+(r[14]?' · '+esc(r[14]):''))});
+  if(/연장/.test(o.proj)||/연장/.test(o.nick))ex.push('프로젝트명에 "연장"이 포함된 연장 건입니다.');
+  if(/연장/.test(o.memo))ex.push('메모: '+esc(o.memo));
+  o.hist.forEach(function(h){if(/연장/.test(h.note))ex.push('연장 조건 적용 '+sd(h.d)+' — '+esc(h.note)+(h.rate?' ('+esc(h.rate)+')':''))});
+  if(o.cname&&/연장|지속|지속확인/.test(o.cname))ex.push('현재 계약서: '+esc(o.cname)+' (연장/지속 확인서)');
+  if(o.orig&&o.orig!==o.cur)ex.push('원금 변동: '+won(o.orig)+' → '+won(o.cur)+'원');
+  var h='<h2 style="margin-top:0">'+esc(o.name)+' '+kb(o.kind)+(o.running?'':'<span class="b gray">'+(o.start>TODAY?'예정':'종료')+'</span>')+'</h2>'+
+   (o.conds.length?'<div class="note">'+o.conds.map(function(c){return '⚑ '+esc(c.full||c.t)}).join('<br>')+'</div>':'')+
+   '<div class="kv">'+kv('투자ID',esc(o.id))+kv('프로젝트명',esc(o.proj))+kv('애칭',esc(o.nick))+kv('투자자',esc(o.who))+kv('구분',esc(o.kind))+
+   kv('투자입금일자',esc(o.depo))+kv('시작일',sd(o.start))+kv('만기일',sd(o.end))+kv('이자지급일',o.payday?esc(o.payday)+'일':'')+
+   kv('투자원금',won(o.orig)+'원')+kv('현재원금',won(o.cur)+'원')+kv('현재이율',esc(o.rate))+kv('만기추가이자율',esc(o.extra))+
+   kv('피투자자명',esc(o.invee))+kv('법인등록번호',esc(o.corp))+kv('연대보증인',esc(o.guar))+
+   kv('계약서',lk(o.clink,o.cname||'계약서'))+kv('추가서류',lk(o.xlink,'추가서류 열기'))+kv('메모',esc(o.memo))+'</div>'+
+   '<h3>연장 정보</h3>'+(ex.length?ex.map(function(t){return '<div class="note">'+t+'</div>'}).join(''):'<div class="muted">연장 내역 없음</div>')+
+   '<h3>원금·이율 변경 이력</h3><div class="scroll"><table><thead><tr><th>적용시작일</th><th class="n">원금</th><th>연이율</th><th>비고</th></tr></thead><tbody>'+
+   (o.hist.map(function(x){return '<tr><td>'+sd(x.d)+'</td><td class="n">'+won(x.amt)+'</td><td>'+esc(x.rate)+'</td><td>'+esc(x.note)+'</td></tr>'}).join('')||'<tr><td colspan="4" class="muted">없음</td></tr>')+'</tbody></table></div>'+
+   '<h3>입금 일정</h3><div class="scroll" style="max-height:260px;overflow:auto"><table><thead><tr><th>지급예정일</th><th>유형</th><th class="n">원금</th><th>이율</th><th class="n">금액</th><th>상태</th><th>메모</th></tr></thead><tbody>'+
+   (o.sch.map(function(s){return '<tr><td>'+sd(s.date)+'</td><td>'+tb(s.type)+'</td><td class="n">'+won(s.prin)+'</td><td>'+esc(s.rate)+'</td><td class="n">'+won(s.amt)+'</td><td>'+esc(s.status)+'</td><td>'+esc(s.memo)+'</td></tr>'}).join('')||'<tr><td colspan="7" class="muted">없음</td></tr>')+'</tbody></table></div>';
+  $('mbody').innerHTML=h;$('modal').hidden=false;
+}
+
+// ---------- 공통 ----------
+function render(){
+  if(!D)return;$('loading').hidden=true;
+  ({dash:dash,cal:cal,list:list})[ST.tab]();
+  ['dash','cal','list'].forEach(function(t){$(t).hidden=t!==ST.tab});
+  Array.prototype.forEach.call(document.querySelectorAll('#tabs button'),function(b){b.className=b.dataset.t===ST.tab?'on':''});
+}
+function apply(raw,fromCache){D=build(raw);$('stamp').textContent=(fromCache?'저장본 ':'')+raw.ts;render()}
+function load(force){
+  $('stamp').textContent='갱신 중…';
+  google.script.run.withSuccessHandler(function(raw){try{localStorage.setItem(LS,JSON.stringify(raw))}catch(e){}apply(raw,false)})
+   .withFailureHandler(function(e){$('stamp').textContent='불러오기 실패: '+(e&&e.message||e)}).getData(!!force);
+}
+document.addEventListener('click',function(e){
+  var t=e.target;
+  if(t.closest('[data-stop]')){e.stopPropagation();return}
+  var n=t.closest('#tabs button');if(n){ST.tab=n.dataset.t;render();return}
+  if(t.id==='refresh'){load(true);return}
+  if(t.id==='mclose'||t.id==='modal'){$('modal').hidden=true;return}
+  var nv=t.closest('[data-nav]');if(nv){var v=+nv.dataset.nav;ST.cm=v?new Date(ST.cm.getFullYear(),ST.cm.getMonth()+v,1):new Date(TODAY.getFullYear(),TODAY.getMonth(),1);cal();return}
+  var ch=t.closest('.chip,tr.click');if(ch&&ch.dataset.id){detail(ch.dataset.id);return}
+  var dy=t.closest('[data-day]');if(dy){ST.cd=dy.dataset.day;cal()}
+});
+try{var c=localStorage.getItem(LS);if(c)apply(JSON.parse(c),true)}catch(e){}
+load(false);
+})();
+</script><div id="END-OF-app" hidden></div>

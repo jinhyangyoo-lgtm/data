@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ko"><head><base target="_top"><meta charset="utf-8">
+<?!= include_('style') ?>
+</head><body>
+<header>
+  <h1>투자수익관리</h1>
+  <nav id="tabs">
+    <button data-t="dash" class="on">대시보드</button>
+    <button data-t="cal">캘린더</button>
+    <button data-t="list">투자목록</button>
+  </nav>
+  <span id="stamp"></span><button id="refresh" title="시트에서 다시 불러오기">새로고침</button>
+</header>
+<main>
+  <div id="loading">불러오는 중…</div>
+  <section id="dash" class="view"></section>
+  <section id="cal" class="view" hidden></section>
+  <section id="list" class="view" hidden></section>
+</main>
+<div id="modal" hidden><div class="box"><button id="mclose">✕</button><div id="mbody"></div></div></div>
+<?!= include_('app') ?>
+</body></html>
