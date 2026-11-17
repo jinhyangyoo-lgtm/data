@@ -516,7 +516,7 @@ function renderCal(){
   const mItems = items.filter(x=>inMonth(x,y,m));
   const leg = {};
   mItems.forEach(x=>{ const n=invMap[x.id].investor; const r=leg[n]||(leg[n]={p:0,c:0,a:0}); if(acc(x)) r.a+=x.expected; else if(isProfit(x)) r.p+=x.expected; else r.c+=x.expected; });
-  $('#calLegend').innerHTML = Object.keys(leg).map(n=>`<span class="pill"><span class="dot" style="background:${colorOf[n]}"></span>${esc(n)} 이익 <b>${won(leg[n].p)}</b></span>${leg[n].a?`<span class="pill" style="background:#f3e8ff;border-color:#d8b4fe"><span class="kb" style="background:#7e22ce;color:#fff">적립</span>${esc(n)} <b>${won(leg[n].a)}</b></span>`:''}${leg[n].c?`<span class="pill pp">${esc(n)} 원금상환 <b>${won(leg[n].c)}</b></span>`:''}`).join('') || '<span class="muted">이 달에는 일정이 없습니다.</span>';
+  $('#calLegend').innerHTML = Object.keys(leg).map(n=>`${leg[n].p||(!leg[n].c&&!leg[n].a)?`<span class="pill"><span class="dot" style="background:${colorOf[n]}"></span>${esc(n)} 이익 <b>${won(leg[n].p)}</b></span>`:''}${leg[n].a?`<span class="pill" style="background:#f3e8ff;border-color:#d8b4fe"><span class="kb" style="background:#7e22ce;color:#fff">적립</span>${esc(n)} <b>${won(leg[n].a)}</b></span>`:''}${leg[n].c?`<span class="pill pp">${esc(n)} 원금상환 <b>${won(leg[n].c)}</b></span>`:''}`).join('') || '<span class="muted">이 달에는 일정이 없습니다.</span>';
   // 그리드
   const first = new Date(y, m-1, 1); const start = new Date(first); start.setDate(1-first.getDay());
   let h = WD.map(w=>`<div class="h">${w}</div>`).join('');
