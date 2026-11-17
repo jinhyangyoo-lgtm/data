@@ -110,9 +110,13 @@ function build_() {
       at: r[13] instanceof Date ? Utilities.formatDate(r[13], TZ, 'yyyy-MM-dd HH:mm') : '', memo: r[14] || ''
     };
   }) : [];
+  const accSh = ss_().getSheetByName('적립설정');
+  const acc = accSh ? rows_('적립설정').map(function (r) {
+    return { id: r[0], mode: String(r[1] || ''), from: r[2] instanceof Date ? Utilities.formatDate(r[2], TZ, 'yyyy-MM') : String(r[2] || '') };
+  }) : [];
   const hist = rows_('과거수익').map(function (r) { return { year: Number(r[0]), amount: num_(r[1]) || 0 }; });
   return JSON.stringify({
-    inv: inv, cond: cond, sch: sch, hol: hol, hist: hist, ext: ext,
+    inv: inv, cond: cond, sch: sch, hol: hol, hist: hist, ext: ext, acc: acc,
     today: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'),
     dbUrl: ss_().getUrl(),
     ts: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss')
@@ -716,6 +720,109 @@ function applyContract(p) {
     }
     SpreadsheetApp.flush();
     return JSON.stringify({ mode: 'full', added: g.added + extra });
+  } finally {
+    bust_();
+    lock.releaseLock();
+  }
+}
+
+
+/* ================= 이자 적립 설정 ================= */
+/**
+ * 투자건별 이자 수령 방식.
+ * mode '현금'(기본) | '적립'(from월부터 월이자·단기이자를 적립하고 만기에 일시 수령)
+ * 데이터는 '적립설정' 시트(투자ID · 수령방식 · 적립시작월 · 수정시각)에 저장한다. 시트가 없으면 만든다.
+ */
+function accSheet_() {
+  const ss = ss_();
+  let sh = ss.getSheetByName('적립설정');
+  if (!sh) {
+    sh = ss.insertSheet('적립설정');
+    sh.getRange(1, 1, 1, 4).setValues([['투자ID', '수령방식', '적립시작월', '수정시각']]);
+    sh.setFrozenRows(1);
+    sh.getRange('C:C').setNumberFormat('@');
+  }
+  return sh;
+}
+function setAccrual(id, mode, from) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    mode = mode === '적립' ? '적립' : '현금';
+    from = String(from || '');
+    if (mode === '적립' && !/^\d{4}-(0[1-9]|1[0-2])$/.test(from)) throw new Error('적립 시작월을 선택해 주세요.');
+    if (mode === '현금') from = '';
+    const sh = accSheet_();
+    const last = lastDataRow_(sh);
+    let row = -1;
+    if (last > 1) {
+      const ids = sh.getRange(2, 1, last - 1, 1).getValues();
+      for (let i = 0; i < ids.length; i++) if (ids[i][0] === id) { row = i + 2; break; }
+    }
+    if (row < 0) row = last + 1;
+    sh.getRange(row, 3).setNumberFormat('@');
+    sh.getRange(row, 1, 1, 4).setValues([[id, mode, from, new Date()]]);
+    SpreadsheetApp.flush();
+    return JSON.stringify({ ok: true });
+  } finally {
+    bust_();
+    lock.releaseLock();
+  }
+}
+
+/* ================= 투자 내용 수정 ================= */
+/**
+ * 투자목록 한 줄 수정 (현재원금은 조건이력으로 계산되므로 여기서 바꾸지 않는다).
+ * p: { name, nick, investor, kind, start, end, payDay, bonus(소수), investee, corpNo, guarantor,
+ *      docName, docUrl, doc2Url, memo, principal0, deposit }
+ * 만기일을 바꾸면 아직 입금 확인 안 된 '원금상환'·'추가이자' 일정의 약정일도 새 만기일로 옮긴다.
+ * (이자 일정은 자동으로 바뀌지 않는다)
+ */
+function updateInvestment(id, p) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const name = String(p.name || '').trim(), investor = String(p.investor || '').trim();
+    if (!name) throw new Error('프로젝트명을 입력해 주세요.');
+    if (!investor) throw new Error('투자자를 입력해 주세요.');
+    if (p.start && p.end && p.end <= p.start) throw new Error('만기일은 시작일 이후여야 합니다.');
+    const kind = p.kind === '단기' || p.kind === '장기' ? p.kind : '';
+    if (p.payDay !== '' && p.payDay != null && !(Number(p.payDay) >= 1 && Number(p.payDay) <= 31)) throw new Error('이자 지급일은 1~31 사이여야 합니다.');
+    const sh = ss_().getSheetByName('투자목록');
+    const last = lastDataRow_(sh);
+    const vals = sh.getRange(2, 1, Math.max(1, last - 1), 19).getValues();
+    let ir = -1;
+    for (let i = 0; i < vals.length; i++) if (vals[i][0] === id) { ir = i; break; }
+    if (ir < 0) throw new Error('투자를 찾을 수 없습니다: ' + id);
+    const row = ir + 2, old = vals[ir];
+    const oldEnd = ymd_(old[6]);
+    const dt = function (s) { return s ? toDate_(s) : ''; };
+    const num = function (v) { return v === '' || v === null || v === undefined || isNaN(Number(v)) ? '' : Number(v); };
+
+    sh.getRange(row, 2, 1, 5).setValues([[name, p.nick || '', investor, kind, dt(p.start)]]);       // B~F
+    sh.getRange(row, 7, 1, 3).setValues([[dt(p.end), p.kind === '단기' ? '' : num(p.payDay), num(p.bonus)]]); // G~I
+    sh.getRange(row, 10).setValue(p.investee || '');
+    sh.getRange(row, 11).setNumberFormat('@').setValue(p.corpNo || '');
+    sh.getRange(row, 12, 1, 5).setValues([[p.guarantor || '', p.docName || '', p.docUrl || '', p.doc2Url || '', p.memo || '']]); // L~P
+    sh.getRange(row, 17).setValue(num(p.principal0));                                                // Q
+    sh.getRange(row, 19).setValue(dt(p.deposit));                                                     // S
+
+    let moved = 0;
+    if (p.end && oldEnd && p.end !== oldEnd) {
+      const schSh = ss_().getSheetByName('입금일정');
+      const n = lastDataRow_(schSh) - 1;
+      const sch = n > 0 ? schSh.getRange(2, 1, n, 7).getValues() : [];
+      for (let i = 0; i < sch.length; i++) {
+        const r = sch[i];
+        if (r[1] !== id || r[6] === true) continue;
+        if ((r[2] === '원금상환' || r[2] === '추가이자') && ymd_(r[3]) === oldEnd) {
+          schSh.getRange(i + 2, 4).setValue(toDate_(p.end));
+          moved++;
+        }
+      }
+    }
+    SpreadsheetApp.flush();
+    return JSON.stringify({ ok: true, moved: moved });
   } finally {
     bust_();
     lock.releaseLock();
