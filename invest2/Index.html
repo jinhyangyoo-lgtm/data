@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>투자 수익 관리</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#fff; --ink:#1d2433; --sub:#6b7385; --line:#e3e6ec;
+    --navy:#1f3864; --blue:#2f5597; --red:#c0392b; --green:#2e7d32; --amber:#b26a00;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;font-size:14px}
+  header{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  header h1{font-size:17px;margin:0 12px 0 0;font-weight:700}
+  .tabs{display:flex;gap:4px}
+  .tabs button{background:transparent;color:#cfd8ea;border:0;padding:8px 12px;border-radius:8px;font-size:14px;cursor:pointer}
+  .tabs button.on{background:#fff;color:var(--navy);font-weight:700}
+  .spacer{flex:1}
+  select,input,textarea,button{font-family:inherit;font-size:14px}
+  header select{padding:6px 8px;border-radius:8px;border:0}
+  main{max-width:1280px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,.06);padding:16px;margin-bottom:16px}
+  .card h2{font-size:15px;margin:0 0 12px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .monthnav{display:flex;align-items:center;gap:8px}
+  .monthnav button{border:1px solid var(--line);background:#fff;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:16px}
+  .monthnav .label{font-size:18px;font-weight:700;min-width:130px;text-align:center}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer}
+  .btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--card);border-radius:var(--radius);padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .kpi .t{color:var(--sub);font-size:12px}
+  .kpi .v{font-size:21px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .kpi .s{color:var(--sub);font-size:12px;margin-top:2px}
+  .kpi.red .v{color:var(--red)} .kpi.green .v{color:var(--green)}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+  th{font-size:12px;color:var(--sub);font-weight:600;background:#fafbfc}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  tr.total td{font-weight:700;background:#f2f5fb}
+  .tablewrap{overflow-x:auto}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef1f6;color:#3b4252}
+  .st-완료{background:#e6f4ea;color:var(--green)} .st-미입금{background:#fde8e6;color:var(--red)}
+  .st-예정{background:#eef1f6;color:#3b4252} .st-금액차이{background:#fff2dc;color:var(--amber)}
+  .muted{color:var(--sub)}
+  a{color:var(--blue)}
+  .grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  /* calendar */
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+  .pill{border:1px solid var(--line);border-radius:999px;padding:5px 10px;background:#fff;font-size:13px}
+  .pill b{font-variant-numeric:tabular-nums}
+  .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}
+  .cal .h{background:#fafbfc;text-align:center;padding:6px;font-size:12px;color:var(--sub);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .cal .d{min-height:118px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px;background:#fff;position:relative}
+  .cal .d.out{background:#fafafa}
+  .cal .d.out .dn{color:#c0c4cc}
+  .cal .d.today{box-shadow:inset 0 0 0 2px var(--blue)}
+  .dn{font-size:12px;font-weight:600}
+  .dn.sun,.dn.hol{color:var(--red)} .dn.sat{color:#2f6fd6}
+  .hn{font-size:10px;color:var(--red);margin-left:4px}
+  .chip{display:flex;align-items:center;gap:4px;margin-top:3px;padding:2px 4px 2px 0;border-radius:6px;background:#f6f8fb;border-left:4px solid #999;font-size:11px;cursor:pointer;line-height:1.3}
+  .chip:hover{background:#eaf0fb}
+  .chip input{margin:0 0 0 3px;width:14px;height:14px;flex:none;cursor:pointer}
+  .chip .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chip .am{font-variant-numeric:tabular-nums;font-weight:600}
+  .chip.principal{background:#c2410c;color:#fff;font-weight:700;font-size:12px;padding:4px 5px 4px 0;border-left-width:6px;box-shadow:0 1px 3px rgba(194,65,12,.45)}
+  .chip.principal:hover{background:#9a3412}
+  .chip.principal{align-items:flex-start}
+  .chip .pbody{flex:1;min-width:0}
+  .chip .pt{display:flex;align-items:center;gap:4px}
+  .chip .pb{background:#fff;color:#c2410c;border-radius:4px;padding:0 4px;font-size:10px;font-weight:800}
+  .chip .pt .am{margin-left:auto}
+  .chip .pn{font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+  .chip.principal .am{color:#fff}
+  .chip.principal .iv{color:#ffedd5}
+  .chip.principal.late{background:#b91c1c}
+  .chip.principal.late .pb{color:#b91c1c}
+  .chip.principal.done{background:#fde7d8;color:#9a3412;box-shadow:none;opacity:.7}
+  .chip.principal.done .am{color:#9a3412}
+  .chip.principal.done .pn{text-decoration:line-through}
+  .cal .d.hasp{background:#fff7ed;box-shadow:inset 0 0 0 2px #fb923c}
+  .pill.pp{background:#c2410c;color:#fff;border-color:#c2410c}
+  .chip.done{opacity:.55}
+  .chip.done .nm{text-decoration:line-through}
+  .chip.late{background:#fde8e6}
+  .chip .sh{color:var(--amber);font-size:10px}
+  .chip .iv{display:none;color:var(--sub);font-size:11px;margin-left:4px}
+  .agenda .chip .iv{display:inline}
+  .daysum{font-size:10px;color:var(--sub);margin-top:4px;text-align:right}
+  .agenda .day{padding:10px 0;border-bottom:1px solid var(--line)}
+  .agenda .day h3{font-size:14px;margin:0 0 6px}
+  .agenda .chip{font-size:13px;padding:6px 6px 6px 0}
+  .calwide{display:block} .calnarrow{display:none}
+  @media(max-width:760px){.calwide{display:none}.calnarrow{display:block} header h1{font-size:15px}}
+  /* modal */
+  .mask{position:fixed;inset:0;background:rgba(15,20,30,.45);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:30px 12px}
+  .mask.on{display:flex}
+  .modal{background:#fff;border-radius:14px;max-width:560px;width:100%;padding:18px 20px}
+  .modal h3{margin:0 0 6px;font-size:17px}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;margin:12px 0;font-size:13px}
+  .kv .k{color:var(--sub)}
+  .edit{border-top:1px solid var(--line);padding-top:12px;margin-top:8px;display:grid;gap:10px}
+  .edit label{font-size:12px;color:var(--sub);display:block;margin-bottom:4px}
+  .edit input[type=date],.edit input[type=number],.edit textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px}
+  .docbtns{display:flex;gap:8px;flex-wrap:wrap}
+  .matbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0;background:#fafbfc}
+  .matbox .row{gap:8px}
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .fgrid .full{grid-column:1/-1}
+  .fgrid label{font-size:12px;color:var(--sub);display:block;margin-bottom:4px}
+  .fgrid input,.fgrid select,.fgrid textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;box-sizing:border-box}
+  .preview{background:#f3f6fb;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.6}
+  .exthist{font-size:12px;margin:0;padding-left:18px}
+  .btn.sm{padding:3px 8px;font-size:12px}
+  @media(max-width:520px){.fgrid{grid-template-columns:1fr}}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1d2433;color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:60}
+  #loading{padding:60px;text-align:center;color:var(--sub)}
+  .chartbox{position:relative;height:320px}
+  .kb{display:inline-block;flex:none;padding:0 5px;margin-right:3px;border-radius:4px;font-size:10px;font-weight:700;line-height:16px;vertical-align:middle}
+  .kb.s{background:#fef3c7;color:#92400e} .kb.l{background:#dbeafe;color:#1e40af}
+  .ctag{display:inline-block;padding:1px 7px;margin:1px 3px 1px 0;border-radius:999px;font-size:11px;background:#fff1e0;color:#9a3412;border:1px solid #fdba74}
+  .ctag{white-space:normal;text-align:left}
+  td.cd{white-space:normal;max-width:230px;min-width:150px}
+  .ctag.past{background:#f3f4f6;color:#6b7280;border-color:#e5e7eb}
+  tr.js-inv{cursor:pointer} tr.js-inv:hover td{background:#f3f7ff}
+  .modal.wide{max-width:860px}
+  .kv2{display:grid;grid-template-columns:130px 1fr 130px 1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:12px 0;font-size:13px}
+  .kv2>div{padding:7px 10px;border-bottom:1px solid #eef0f4;white-space:pre-wrap;word-break:break-all}
+  .kv2>.k{background:#f8f9fb;color:var(--sub);font-weight:600} .kv2>.full{grid-column:2/-1}
+  @media(max-width:700px){.kv2{grid-template-columns:110px 1fr}.kv2>.full{grid-column:2}}
+  .note{padding:8px 10px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;margin:6px 0;font-size:13px}
+  header .btn{background:transparent;color:#fff;border-color:#5a76ad;padding:5px 10px}
+  #stamp{font-size:11px;color:#cfd8ea}
+</style>
+</head>
+<body>
+<header>
+  <h1>투자 수익 관리</h1>
+  <div class="tabs" id="tabs">
+    <button data-v="dash" class="on">대시보드</button>
+    <button data-v="cal">캘린더</button>
+    <button data-v="list">투자목록</button>
+  </div>
+  <div class="spacer"></div>
+  <span id="stamp"></span><button class="btn" id="refreshBtn" title="DB 시트에서 다시 읽기">새로고침</button>
+  <label style="font-size:13px">투자자
+    <select id="investorSel"><option value="">전체</option></select>
+  </label>
+</header>
+<main>
+  <div id="loading">데이터를 불러오는 중입니다…</div>
+
+  <section id="v-dash" hidden>
+    <div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <div class="monthnav"><button data-m="-1">‹</button><div class="label js-month"></div><button data-m="1">›</button></div>
+      <button class="btn js-thismonth">이번 달</button>
+    </div>
+    <div id="pendBox" hidden style="margin-bottom:12px;padding:10px 12px;background:#fff7ed;border:1px solid #fdba74;border-radius:10px"></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="card">
+      <h2>투자자별 현재 투자금액 <span class="muted" style="font-weight:400;font-size:12px">오늘 기준 운용 중 원금 · 단기 = 1년 미만</span></h2>
+      <div class="tablewrap"><table id="holdTable"></table></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2 class="js-month-title">투자자별 입금 예정</h2>
+        <div class="tablewrap"><table id="invTable"></table></div>
+      </div>
+      <div class="card">
+        <h2>이번 달 입금 목록</h2>
+        <div class="tablewrap" style="max-height:360px;overflow:auto"><table id="monthList"></table></div>
+      </div>
+    </div>
+    <div class="card" id="lateCard" hidden>
+      <h2>지연된 미입금 (예정일이 지났는데 확인 안 된 건)</h2>
+      <div class="tablewrap" style="max-height:300px;overflow:auto"><table id="lateList"></table></div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">월별 투자이익</h2>
+        <select id="yearSel"></select>
+      </div>
+      <div class="chartbox"><canvas id="chart"></canvas></div>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">막대는 투자자별 예정 수익(원금 제외), 선은 입금 확인된 금액입니다. 지급일이 주말·공휴일이면 다음 영업일 기준으로 집계합니다.</p>
+    </div>
+    <div class="card">
+      <h2>연도별 수익</h2>
+      <div class="tablewrap"><table id="yearTable"></table></div>
+    </div>
+  </section>
+
+  <section id="v-cal" hidden>
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div class="monthnav"><button data-m="-1">‹</button><div class="label js-month"></div><button data-m="1">›</button></div>
+        <div class="row">
+          <label style="font-size:13px"><input type="checkbox" id="showPrincipal" checked> 원금상환 표시</label>
+          <button class="btn js-thismonth">이번 달</button>
+        </div>
+      </div>
+      <div class="legend" id="calLegend"></div>
+      <div class="calwide"><div class="cal" id="calGrid"></div></div>
+      <div class="calnarrow agenda" id="calAgenda"></div>
+      <p class="muted" style="font-size:12px;margin:10px 0 0"><span class="kb s">단기</span><span class="kb l">장기</span> 표시는 투자기간 1년 미만/이상입니다. ↪ 표시는 약정일이 주말·공휴일이라 다음 영업일로 옮겨졌거나 지급일을 직접 바꾼 건입니다. 항목을 누르면 계약 내용과 지급일 수정 화면이 열립니다.</p>
+    </div>
+  </section>
+
+  <section id="v-list" hidden>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <h2 style="margin:0">투자목록</h2>
+        <div class="row">
+          <label style="font-size:13px">정렬
+            <select id="listSort">
+              <option value="start">투자시작일</option>
+              <option value="month">투자월 (시작 연·월별 묶음)</option>
+              <option value="name">프로젝트명</option>
+              <option value="end">만기일</option>
+            </select></label>
+          <label style="font-size:13px"><input type="checkbox" id="showEnded"> 종료된 투자 포함</label>
+          <button class="btn primary" id="newBtn">+ 신규 투자 등록</button>
+          <button class="btn" id="genBtn">빠진 일정 자동 생성</button>
+          <a class="btn" id="dbLink" target="_blank">DB 시트 열기</a>
+        </div>
+      </div>
+      <div id="listWrap"></div>
+    </div>
+  </section>
+</main>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>window.addEventListener("error",function(e){var l=document.getElementById("loading");if(l){l.hidden=false;l.textContent="오류: "+e.message+" (line "+e.lineno+":"+e.colno+")";}});</script>
+<script>
+const COLORS = ['#1f77b4','#e4572e','#2e9e5b','#8e5cc2','#d4a017','#17a2b8','#c2185b','#6d4c41'];
+const WD = ['일','월','화','수','목','금','토'];
+let D = null;            // 서버 데이터
+let invMap = {}, holMap = {}, colorOf = {};
+let curInvestor = '';
+let curMonth = null;     // Date (1일)
+let chart = null;
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const won = n => (n == null || isNaN(n)) ? '-' : Math.round(n).toLocaleString('ko-KR');
+const won0 = n => n ? won(n) : '-';
+function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function pd(s){ const p=s.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
+function kdate(s){ if(!s) return ''; const d=pd(s); return (d.getMonth()+1)+'/'+d.getDate()+'('+WD[d.getDay()]+')'; }
+function kdateY(s){ if(!s) return ''; const d=pd(s); return d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'('+WD[d.getDay()]+')'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>t.style.display='none',2200); }
+
+// 영업일 보정: 주말·공휴일이면 다음 영업일
+function nextBizDay(s){
+  let d = pd(s);
+  while (d.getDay()===0 || d.getDay()===6 || holMap[ymd(d)]) d.setDate(d.getDate()+1);
+  return ymd(d);
+}
+function shiftReason(x){
+  if (x.changed) return '지급일 직접 변경 (약정일 '+kdate(x.due)+')';
+  if (x.payDate !== x.due){
+    const d = pd(x.due); const h = holMap[x.due];
+    return '약정일 '+kdate(x.due)+(h?' '+h:(d.getDay()===0?' 일요일':d.getDay()===6?' 토요일':''))+' → 다음 영업일';
+  }
+  return '';
+}
+function statusOf(x){
+  if (x.paid) return (x.actual!=null && x.actual!==x.expected) ? '금액차이' : '완료';
+  return x.payDate < D.today ? '미입금' : '예정';
+}
+function received(x){ return x.paid ? (x.actual!=null ? x.actual : x.expected) : 0; }
+function isProfit(x){ return x.type !== '원금상환'; }
+function shortName(inv){ return inv ? (inv.nick || inv.name) : ''; }
+function condAt(id, date){
+  let best=null;
+  D.cond.forEach(c=>{ if(c.id===id && c.from<=date && (!best || c.from>=best.from)) best=c; });
+  return best;
+}
+function kbHtml(v){ if(!v) return ''; const k=termKind(v); return `<span class="kb ${k==='단기'?'s':'l'}">${k}</span>`; }
+function kindOfSch(x){ const v=invMap[x.id]; return v?termKind(v):'장기'; }
+function pctTxt(r){ return (r*100).toFixed(1).replace(/\.0$/,'')+'%'; }
+function ymdDot(s){ const d=pd(s); return d.getFullYear()+'.'+(d.getMonth()+1)+'.'+d.getDate(); }
+/* 기본이율 외 조건: 만기 추가이자 · 이율/원금 변경(예정은 주황, 이미 적용된 것은 회색) · 메모의 % 조건 */
+function condTags(v){
+  const t=[];
+  if (v.bonus) t.push({t:'만기시 +'+pctTxt(v.bonus), full:'만기 추가이자 '+pctTxt(v.bonus), past:false});
+  const hs=D.cond.filter(c=>c.id===v.id).sort((a,b)=>a.from.localeCompare(b.from));
+  for(let i=1;i<hs.length;i++){
+    const a=hs[i-1], b=hs[i], fut=b.from>D.today;
+    if (b.rate!==a.rate) t.push({t:ymdDot(b.from)+'~ '+pctTxt(b.rate)+(fut?' 변경':''), full:ymdDot(b.from)+'부터 이율 '+pctTxt(a.rate)+' → '+pctTxt(b.rate)+(b.note?' ('+b.note+')':''), past:!fut});
+    else if (b.principal!==a.principal && fut) t.push({t:ymdDot(b.from)+'~ 원금 '+won(b.principal), full:ymdDot(b.from)+'부터 원금 '+won(a.principal)+' → '+won(b.principal), past:false});
+  }
+  const m=String(v.memo||'').replace('[계약서 대기]','').trim();
+  if (/%/.test(m) && !/^만기\s*[\d.]+%\s*추가$/.test(m)) t.push({t:m.length>26?m.slice(0,26)+'…':m, full:m, past:false});
+  return t;
+}
+function condTagsHtml(v){ return condTags(v).map(c=>`<span class="ctag ${c.past?'past':''}" title="${esc(c.full)}">${esc(c.t)}</span>`).join(''); }
+function isExtended(v){
+  return extCount(v.id)>0 || /연장/.test((v.name||'')+(v.nick||'')+(v.docName||'')) || D.cond.some(c=>c.id===v.id && /연장/.test(c.note||''));
+}
+function invStatus(inv){
+  if (!inv.end) return '계약서 대기';
+  if (inv.end < D.today) return '종료';
+  const days = (pd(inv.end)-pd(D.today))/86400000;
+  return days<=60 ? '만기임박' : '진행';
+}
+function filtered(){
+  return D.sch.filter(x => !curInvestor || (invMap[x.id] && invMap[x.id].investor===curInvestor));
+}
+function inMonth(x, y, m){ return x.payDate && x.payDate.slice(0,7) === y+'-'+String(m).padStart(2,'0'); }
+
+const LSK = 'inv2_cache_v1';
+function boot(json, cached){
+  const keep = { inv: curInvestor, view: show.cur || 'dash', month: curMonth, year: $('#yearSel').value };
+  D = JSON.parse(json);
+  invMap={}; holMap={}; colorOf={};
+  $('#investorSel').innerHTML='<option value="">전체</option>'; $('#yearSel').innerHTML='';
+  D.inv.forEach(v=>invMap[v.id]=v);
+  D.hol.forEach(h=>holMap[h.date]=h.name);
+  const investors = [];
+  D.inv.forEach(v=>{ if(v.investor && !investors.includes(v.investor)) investors.push(v.investor); });
+  investors.forEach((n,i)=>{ colorOf[n]=COLORS[i%COLORS.length]; const o=document.createElement('option'); o.value=n;o.textContent=n; $('#investorSel').appendChild(o); });
+  const t = pd(D.today); curMonth = keep.month || new Date(t.getFullYear(), t.getMonth(), 1);
+  const years = new Set(D.hist.map(h=>h.year)); D.sch.forEach(x=>{ if(x.payDate) years.add(+x.payDate.slice(0,4)); });
+  [...years].sort().forEach(y=>{ const o=document.createElement('option'); o.value=y;o.textContent=y+'년'; $('#yearSel').appendChild(o); });
+  $('#yearSel').value = keep.year && years.has(+keep.year) ? keep.year : t.getFullYear();
+  curInvestor = investors.includes(keep.inv) ? keep.inv : ''; $('#investorSel').value = curInvestor;
+  $('#dbLink').href = D.dbUrl;
+  $('#stamp').textContent = (cached ? '저장본 · 갱신 중… ' : '') + (D.ts||'');
+  if (!cached) { try { localStorage.setItem(LSK, json); } catch(e){} }
+  $('#loading').hidden = true;
+  show(keep.view);
+}
+function loadChart(cb){
+  loadChart.q = loadChart.q || []; loadChart.q.push(cb);
+  if (loadChart.busy) return; loadChart.busy = true;
+  const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+  sc.onload = ()=>{ const q=loadChart.q; loadChart.q=[]; q.forEach(f=>f()); };
+  sc.onerror = ()=>{ const c=$('#chart'); if(c) c.replaceWith(Object.assign(document.createElement('p'),{textContent:'차트 라이브러리를 불러오지 못했습니다.'})); };
+  document.head.appendChild(sc);
+}
+
+function show(v){
+  $$('#tabs button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  ['dash','cal','list'].forEach(k=>$('#v-'+k).hidden = k!==v);
+  show.cur = v; render();
+}
+function render(){
+  const y=curMonth.getFullYear(), m=curMonth.getMonth()+1;
+  $$('.js-month').forEach(e=>e.textContent = y+'년 '+m+'월');
+  if (show.cur==='dash') renderDash(); else if (show.cur==='cal') renderCal(); else renderList();
+}
+
+// 단기 = 투자기간 1년 미만 (만기일 < 시작일 + 1년), 날짜가 없으면 DB의 구분 사용
+function termKind(v){ if(!v.start||!v.end) return v.kind||'장기';
+  const [y,m,d]=v.start.split('-'); const oneYear=`${+y+1}-${m}-${d}`;
+  return v.end < oneYear ? '단기' : '장기'; }
+
+/* ---------------- 대시보드 ---------------- */
+function renderDash(){
+  const y=curMonth.getFullYear(), m=curMonth.getMonth()+1;
+  const items = filtered().filter(x=>inMonth(x,y,m));
+  const prof = items.filter(isProfit), prin = items.filter(x=>!isProfit(x));
+  const sum = (a,f)=>a.reduce((s,x)=>s+f(x),0);
+  const exp = sum(prof,x=>x.expected), rec = sum(prof,received);
+  const lateAll = filtered().filter(x=>statusOf(x)==='미입금');
+  const late = sum(lateAll,x=>x.expected);
+  const prinAmt = sum(prin,x=>x.expected), prinRec = sum(prin,received);
+  const prinS = prin.filter(x=>kindOfSch(x)==='단기'), prinL = prin.filter(x=>kindOfSch(x)==='장기');
+  // 운용 중 원금
+  let active = 0;
+  D.inv.forEach(v=>{ if((!curInvestor||v.investor===curInvestor) && v.start<=D.today && (!v.end || v.end>=D.today)){ const c=condAt(v.id,D.today)||condAt(v.id,'9999-12-31'); if(c) active+=c.principal; } });
+  const pend = D.inv.filter(v=>!v.end && (!curInvestor||v.investor===curInvestor));
+  $('#pendBox').hidden = !pend.length;
+  $('#pendBox').innerHTML = pend.length ? `<b>계약서 대기 ${pend.length}건</b> <span class="muted" style="font-size:12px">계약서 PDF 링크를 연결하면 만기일·이자 일정·피투자자 정보가 자동으로 채워집니다.</span><div class="row" style="margin-top:8px;flex-wrap:wrap">${pend.map(v=>`<button class="btn sm primary js-contract" data-id="${esc(v.id)}">${esc(v.nick||v.name)} · ${esc(v.investor)} · ${won(v.principal0)}원 → 계약서 연결</button>`).join('')}</div>` : '';
+  $('#kpis').innerHTML = [
+    ['이번 달 예정 수익', won(exp), prof.length+'건'],
+    ['입금 확인', won(rec), (exp?Math.round(rec/exp*100):0)+'%', 'green'],
+    ['남은 수익', won(exp-rec), ''],
+    ['지연된 미입금 (전체 기간)', won(late), lateAll.length+'건 · 예정일이 지났는데 확인 안 됨', late?'red':''],
+    ['원금상환 예정', won(prinAmt), `<span class="kb s">단기</span>${prinS.length}건 ${won(sum(prinS,x=>x.expected))}<br><span class="kb l">장기</span>${prinL.length}건 ${won(sum(prinL,x=>x.expected))}${prinRec?'<br>입금 확인 '+won(prinRec):''}`],
+    ['운용 중 원금', won(active), '오늘 기준']
+  ].map(k=>`<div class="kpi ${k[3]||''}"><div class="t">${k[0]}</div><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join('');
+
+  // 투자자별 · 장단기별 현재 투자금액
+  const hold = {};
+  D.inv.forEach(v=>{ if((curInvestor && v.investor!==curInvestor) || !(v.start<=D.today && (!v.end || v.end>=D.today))) return;
+    const c=condAt(v.id,D.today)||condAt(v.id,'9999-12-31'); if(!c||!c.principal) return;
+    const r=hold[v.investor]||(hold[v.investor]={'단기':0,'장기':0,n단기:0,n장기:0}); const k=termKind(v);
+    r[k]+=c.principal; r['n'+k]++; });
+  const hn = Object.keys(hold).sort((a,b)=>(hold[b]['단기']+hold[b]['장기'])-(hold[a]['단기']+hold[a]['장기']));
+  const HT={'단기':0,'장기':0,n단기:0,n장기:0}; hn.forEach(n=>Object.keys(HT).forEach(k=>HT[k]+=hold[n][k]));
+  const gt = HT['단기']+HT['장기'];
+  const cell=(amt,cnt)=>`<td class="n">${amt?won(amt):'-'}${cnt?` <span class="muted" style="font-size:12px">${cnt}건</span>`:''}</td>`;
+  let hh='<tr><th>투자자</th><th class="n">단기 투자</th><th class="n">장기 투자</th><th class="n">합계</th><th class="n">비중</th></tr>';
+  hn.forEach(n=>{ const r=hold[n], t=r['단기']+r['장기'];
+    hh+=`<tr><td><span class="dot" style="background:${colorOf[n]||'#999'}"></span>${esc(n)}</td>${cell(r['단기'],r.n단기)}${cell(r['장기'],r.n장기)}<td class="n"><b>${won(t)}</b> <span class="muted" style="font-size:12px">${r.n단기+r.n장기}건</span></td><td class="n">${gt?(t/gt*100).toFixed(1)+'%':'-'}</td></tr>`; });
+  if(!hn.length) hh+='<tr><td colspan="5" class="muted">운용 중인 투자가 없습니다.</td></tr>';
+  else hh+=`<tr class="total"><td>합계</td>${cell(HT['단기'],HT.n단기)}${cell(HT['장기'],HT.n장기)}<td class="n"><b>${won(gt)}</b> <span class="muted" style="font-size:12px">${HT.n단기+HT.n장기}건</span></td><td class="n">${gt?'100%':'-'}</td></tr>`;
+  $('#holdTable').innerHTML = hh;
+
+  // 투자자별 합계
+  $('.js-month-title').textContent = m+'월 투자자별 입금 예정';
+  const byInv = {};
+  items.forEach(x=>{ const n=invMap[x.id]?invMap[x.id].investor:'?'; const r=byInv[n]||(byInv[n]={exp:0,rec:0,late:0,prin:0,cnt:0,pS:0,pL:0});
+    if(isProfit(x)){ r.exp+=x.expected; r.rec+=received(x); r.cnt++; } else { r.prin+=x.expected; if(kindOfSch(x)==='단기') r.pS+=x.expected; else r.pL+=x.expected; }
+    if(statusOf(x)==='미입금') r.late+=x.expected; });
+  const names = Object.keys(byInv).sort((a,b)=>byInv[b].exp-byInv[a].exp);
+  let h = '<tr><th>투자자</th><th class="n">예정 수익</th><th class="n">입금 확인</th><th class="n">남은 수익</th><th class="n">지연</th><th class="n">원금상환</th></tr>';
+  const T={exp:0,rec:0,late:0,prin:0};
+  names.forEach(n=>{ const r=byInv[n]; Object.keys(T).forEach(k=>T[k]+=r[k]);
+    h+=`<tr><td><span class="dot" style="background:${colorOf[n]||'#999'}"></span>${esc(n)} <span class="muted">${r.cnt}건</span></td><td class="n">${won0(r.exp)}</td><td class="n">${won0(r.rec)}</td><td class="n">${won0(r.exp-r.rec)}</td><td class="n" style="color:var(--red)">${won0(r.late)}</td><td class="n">${won0(r.prin)}${r.prin?`<div style="font-size:11px;line-height:1.3">${r.pS?`<span class="kb s">단기</span>${won(r.pS)}`:''}${r.pS&&r.pL?'<br>':''}${r.pL?`<span class="kb l">장기</span>${won(r.pL)}`:''}</div>`:''}</td></tr>`; });
+  if (!names.length) h += '<tr><td colspan="6" class="muted">이 달에는 일정이 없습니다.</td></tr>';
+  else h+=`<tr class="total"><td>합계</td><td class="n">${won(T.exp)}</td><td class="n">${won(T.rec)}</td><td class="n">${won(T.exp-T.rec)}</td><td class="n">${won0(T.late)}</td><td class="n">${won0(T.prin)}</td></tr>`;
+  $('#invTable').innerHTML = h;
+
+  // 이번 달 목록
+  const list = items.slice().sort((a,b)=>a.payDate.localeCompare(b.payDate));
+  $('#monthList').innerHTML = '<tr><th></th><th>지급일</th><th>프로젝트</th><th>투자자</th><th class="n">금액</th><th>상태</th></tr>' +
+    (list.map(x=>{ const v=invMap[x.id]||{}; const st=statusOf(x);
+      return `<tr data-sid="${x.sid}" class="js-open" style="cursor:pointer"><td><input type="checkbox" class="js-paid" data-sid="${x.sid}" ${x.paid?'checked':''}></td><td>${kdate(x.payDate)}${x.payDate!==x.due?' <span class="muted">↪</span>':''}</td><td>${x.type==='원금상환'?'<b>[원금]</b> ':''}${kbHtml(v)}${esc(shortName(v))}</td><td><span class="dot" style="background:${colorOf[v.investor]||'#999'}"></span>${esc(v.investor)}</td><td class="n">${won(x.expected)}</td><td><span class="badge st-${st}">${st}</span></td></tr>`; }).join('') || '<tr><td colspan="6" class="muted">일정 없음</td></tr>');
+
+  const lateRows = lateAll.slice().sort((a,b)=>a.payDate.localeCompare(b.payDate));
+  $('#lateCard').hidden = !lateRows.length;
+  $('#lateList').innerHTML = '<tr><th></th><th>지급일</th><th>프로젝트</th><th>투자자</th><th>유형</th><th class="n">금액</th></tr>' +
+    lateRows.map(x=>{ const v=invMap[x.id]||{}; return `<tr data-sid="${x.sid}" class="js-open" style="cursor:pointer"><td><input type="checkbox" class="js-paid" data-sid="${x.sid}"></td><td>${kdateY(x.payDate)}</td><td>${kbHtml(v)}${esc(shortName(v))}</td><td><span class="dot" style="background:${colorOf[v.investor]||'#999'}"></span>${esc(v.investor)}</td><td>${esc(x.type)}</td><td class="n">${won(x.expected)}</td></tr>`; }).join('');
+  renderChart(); renderYearTable();
+}
+
+function renderChart(){
+  const yr = +$('#yearSel').value;
+  const months = [...Array(12)].map((_,i)=>(i+1)+'월');
+  const items = filtered().filter(x=>isProfit(x) && x.payDate && +x.payDate.slice(0,4)===yr);
+  const invs = [...new Set(items.map(x=>invMap[x.id]&&invMap[x.id].investor))].filter(Boolean);
+  const datasets = invs.map(n=>({ type:'bar', label:n+' 예정', backgroundColor:colorOf[n]+'cc', stack:'e',
+    data: months.map((_,i)=>items.filter(x=>invMap[x.id].investor===n && +x.payDate.slice(5,7)===i+1).reduce((s,x)=>s+x.expected,0)) }));
+  datasets.push({ type:'line', label:'입금 확인', borderColor:'#111', backgroundColor:'#111', pointRadius:3, tension:.2,
+    data: months.map((_,i)=>items.filter(x=>+x.payDate.slice(5,7)===i+1).reduce((s,x)=>s+received(x),0)) });
+  if (chart) chart.destroy();
+  if (typeof Chart === 'undefined') { loadChart(renderChart); return; }
+  chart = new Chart($('#chart'), { data:{ labels:months, datasets },
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      scales:{ x:{stacked:true}, y:{stacked:true, ticks:{callback:v=>(v/10000).toLocaleString()+'만'}} },
+      plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+won(c.raw)+'원', footer:cs=>{ const t=cs.filter(c=>c.dataset.type==='bar').reduce((s,c)=>s+c.raw,0); return '예정 합계: '+won(t)+'원'; } } } } } });
+}
+
+function renderYearTable(){
+  const ys = {};
+  if (!curInvestor) D.hist.forEach(h=>ys[h.year]={exp:null,rec:h.amount,hist:true});
+  filtered().forEach(x=>{ if(!isProfit(x)||!x.payDate) return; const y=+x.payDate.slice(0,4); const r=ys[y]||(ys[y]={exp:0,rec:0}); if(r.hist) return; r.exp+=x.expected; r.rec+=received(x); });
+  const keys = Object.keys(ys).sort();
+  let h='<tr><th>연도</th><th class="n">예정 수익</th><th class="n">입금 확인</th><th>비고</th></tr>';
+  let te=0,tr=0;
+  keys.forEach(k=>{ const r=ys[k]; te+=r.exp||0; tr+=r.rec||0;
+    h+=`<tr><td>${k}</td><td class="n">${r.exp==null?'-':won(r.exp)}</td><td class="n">${won(r.rec)}</td><td class="muted">${r.hist?'과거 기록(시트2)':'입금일정 기준'}</td></tr>`; });
+  h+=`<tr class="total"><td>합계</td><td class="n">${won(te)}</td><td class="n">${won(tr)}</td><td></td></tr>`;
+  $('#yearTable').innerHTML = h;
+}
+
+/* ---------------- 캘린더 ---------------- */
+function chipHtml(x){
+  const v = invMap[x.id]||{}; const st=statusOf(x);
+  const cls = ['chip', x.type==='원금상환'?'principal':'', x.paid?'done':'', st==='미입금'?'late':''].join(' ');
+  const shifted = x.payDate!==x.due ? `<span class="sh" title="${esc(shiftReason(x))}">↪</span>` : '';
+  const amt = x.type==='원금상환' ? won(Math.round(x.expected/10000))+'만원' : won(x.expected);
+  return `<div class="${cls}" style="border-left-color:${colorOf[v.investor]||'#999'}" data-sid="${x.sid}" title="${esc(v.investor+' · '+(v.name||'')+' · '+(v.start?termKind(v)+' · ':'')+x.type+' '+won(x.expected)+'원')}">
+    <input type="checkbox" class="js-paid" data-sid="${x.sid}" ${x.paid?'checked':''} aria-label="입금확인">
+    ${x.type==='원금상환'
+      ? `<div class="pbody"><div class="pt">${shifted}<span class="pb">원금상환</span><span class="am">${amt}</span></div><div class="pn">${kbHtml(v)}${esc(shortName(v))}<span class="iv">${esc(v.investor||'')}</span></div></div>`
+      : `${shifted}${kbHtml(v)}<span class="nm">${esc(shortName(v))}<span class="iv">${esc(v.investor||'')}</span></span><span class="am">${amt}</span>`}</div>`;
+}
+function renderCal(){
+  const y=curMonth.getFullYear(), m=curMonth.getMonth()+1;
+  const showP = $('#showPrincipal').checked;
+  const items = filtered().filter(x=>x.payDate && (showP || isProfit(x)));
+  const byDay = {};
+  items.forEach(x=>(byDay[x.payDate]=byDay[x.payDate]||[]).push(x));
+  // 범례: 이번 달 투자자별 합계
+  const mItems = items.filter(x=>inMonth(x,y,m));
+  const leg = {};
+  mItems.forEach(x=>{ const n=invMap[x.id].investor; const r=leg[n]||(leg[n]={p:0,c:0}); if(isProfit(x)) r.p+=x.expected; else r.c+=x.expected; });
+  $('#calLegend').innerHTML = Object.keys(leg).map(n=>`<span class="pill"><span class="dot" style="background:${colorOf[n]}"></span>${esc(n)} 이익 <b>${won(leg[n].p)}</b></span>${leg[n].c?`<span class="pill pp">${esc(n)} 원금상환 <b>${won(leg[n].c)}</b></span>`:''}`).join('') || '<span class="muted">이 달에는 일정이 없습니다.</span>';
+  // 그리드
+  const first = new Date(y, m-1, 1); const start = new Date(first); start.setDate(1-first.getDay());
+  let h = WD.map(w=>`<div class="h">${w}</div>`).join('');
+  for (let i=0;i<42;i++){
+    const d = new Date(start); d.setDate(start.getDate()+i);
+    if (i>=35 && d.getMonth()!==m-1) break;
+    const s = ymd(d); const list = (byDay[s]||[]).sort((a,b)=>(b.type==='원금상환')-(a.type==='원금상환'));
+    const hasP = list.some(x=>x.type==='원금상환' && !x.paid);
+    const hol = holMap[s];
+    const dcls = d.getDay()===0?'sun':d.getDay()===6?'sat':'';
+    const tot = list.filter(isProfit).reduce((a,x)=>a+x.expected,0);
+    h += `<div class="d ${d.getMonth()!==m-1?'out':''} ${s===D.today?'today':''} ${hasP?'hasp':''}"><span class="dn ${dcls} ${hol?'hol':''}">${d.getDate()}</span>${hol?`<span class="hn">${esc(hol)}</span>`:''}
+      ${list.map(chipHtml).join('')}${list.length>1&&tot?`<div class="daysum">이익 ${won(tot)}</div>`:''}</div>`;
+  }
+  $('#calGrid').innerHTML = h;
+  // 모바일 목록
+  const days = Object.keys(byDay).filter(s=>s.slice(0,7)===y+'-'+String(m).padStart(2,'0')).sort();
+  $('#calAgenda').innerHTML = days.map(s=>{ const hol=holMap[s]; const list=byDay[s].slice().sort((a,b)=>(b.type==='원금상환')-(a.type==='원금상환'));
+    const tot=list.filter(isProfit).reduce((a,x)=>a+x.expected,0);
+    return `<div class="day"><h3>${kdate(s)}${hol?` <span class="hn">${esc(hol)}</span>`:''} <span class="muted" style="font-weight:400;font-size:12px">이익 ${won(tot)}</span></h3>${list.map(chipHtml).join('')}</div>`; }).join('') || '<p class="muted">이 달에는 일정이 없습니다.</p>';
+}
+
+/* ---------------- 투자목록 ---------------- */
+function renderList(){
+  const showEnded = $('#showEnded').checked;
+  const mode = $('#listSort').value;
+  const base = D.inv.filter(v=>(!curInvestor||v.investor===curInvestor) && (showEnded || invStatus(v)!=='종료'));
+  const cmp = {
+    start:(a,b)=>(a.start||'').localeCompare(b.start||'') || a.name.localeCompare(b.name,'ko'),
+    month:(a,b)=>(a.start||'').localeCompare(b.start||'') || a.name.localeCompare(b.name,'ko'),
+    name:(a,b)=>a.name.localeCompare(b.name,'ko',{numeric:true}) || (a.start||'').localeCompare(b.start||''),
+    end:(a,b)=>(a.end||'').localeCompare(b.end||'') || a.name.localeCompare(b.name,'ko')
+  }[mode];
+  const head = '<tr><th>상태</th><th>프로젝트</th><th>투자자</th><th class="n">현재원금</th><th class="n">이율</th><th>시작일</th><th>만기일</th><th>지급일</th><th></th><th>계약서</th><th>추가 조건</th></tr>';
+  const row = v=>{ const c=condAt(v.id,D.today)||condAt(v.id,'9999-12-31')||{}; const st=invStatus(v);
+    return `<tr class="js-inv" data-id="${esc(v.id)}"><td><span class="badge ${st==='종료'?'':st==='만기임박'||st==='계약서 대기'?'st-금액차이':'st-완료'}">${st}</span></td>
+    <td><b>${esc(v.name)}</b>${isExtended(v)?' <span class="badge st-금액차이" style="font-size:11px">연장</span>':''}<div class="muted" style="font-size:12px">${esc(v.id)} ${esc(v.nick||'')}</div></td>
+    <td><span class="dot" style="background:${colorOf[v.investor]}"></span>${esc(v.investor)}</td>
+    <td class="n">${won(c.principal)}</td><td class="n">${c.rate?(c.rate*100).toFixed(1)+'%':'-'}</td>
+    <td>${kdateY(v.start)}</td><td>${kdateY(v.end)}</td><td>${v.payDay?('매월 '+v.payDay+'일'):'계약별'}</td>
+    <td style="white-space:nowrap">${v.end?`<button class="btn sm js-extend" data-id="${esc(v.id)}">연장</button>`:''}${!v.end||!v.docUrl?` <button class="btn sm ${v.end?'':'primary'} js-contract" data-id="${esc(v.id)}">계약서 연결</button>`:''}</td>
+    <td>${v.docUrl?`<a href="${esc(v.docUrl)}" target="_blank">계약서</a>`:'<span class="muted">없음</span>'}${v.doc2Url?` · <a href="${esc(v.doc2Url)}" target="_blank">추가</a>`:''}${extCount(v.id)?` <span class="muted" style="font-size:11px">(연장 ${extCount(v.id)}회)</span>`:''}</td>
+    <td class="cd">${condTagsHtml(v)||'<span class="muted">-</span>'}</td></tr>`; };
+  let out='';
+  const grp = v=>!v.end ? '대기' : termKind(v);
+  ['대기','단기','장기'].forEach(kind=>{
+    const list = base.filter(v=>grp(v)===kind).sort(cmp);
+    if (kind==='대기' && !list.length) return;
+    const pc = list.reduce((s,v)=>{ const c=invStatus(v)==='종료'?null:(condAt(v.id,D.today)||condAt(v.id,'9999-12-31')); return s+(c?c.principal:0); },0);
+    out += `<h3 style="margin:18px 0 8px;font-size:15px">${kind==='대기'?'계약서 대기':kind+' 투자'} <span class="muted" style="font-weight:400;font-size:12px">${kind==='대기'?'(계약서를 연결하면 만기·이자 일정이 만들어집니다)':kind==='단기'?'(1년 미만)':'(1년 이상)'}</span> <span class="muted" style="font-weight:400;font-size:13px">${list.length}건 · 운용 중 원금 ${won(pc)}원</span></h3>`;
+    if(!list.length){ out+='<p class="muted">해당 투자가 없습니다.</p>'; return; }
+    let h=head, lastM='';
+    list.forEach(v=>{
+      if(mode==='month'){ const m=(v.start||'').slice(0,7); if(m!==lastM){ lastM=m; const [y,mm]=m.split('-');
+        const cnt=list.filter(x=>(x.start||'').slice(0,7)===m); 
+        h+=`<tr class="total"><td colspan="11">${y}년 ${+mm}월 시작 · ${cnt.length}건 · 현재원금 ${won(cnt.reduce((s,x)=>{ const c=invStatus(x)==='종료'?null:(condAt(x.id,D.today)||condAt(x.id,'9999-12-31')); return s+(c?c.principal:0); },0))}원</td></tr>`; } }
+      h+=row(v); });
+    out += `<div class="tablewrap"><table>${h}</table></div>`;
+  });
+  $('#listWrap').innerHTML = out;
+}
+
+/* ---------------- 투자 상세 ---------------- */
+function openInv(id){
+  const v = invMap[id]; if(!v) return;
+  const c = condAt(id, D.today) || condAt(id, '9999-12-31') || {};
+  const st = invStatus(v);
+  const kv = (k,val,full)=>`<div class="k">${k}</div><div${full?' class="full"':''}>${val==null||val===''?'<span class="muted">-</span>':val}</div>`;
+  const link = (u,t)=>u?`<a href="${esc(u)}" target="_blank">${esc(t||u)}</a>`:'';
+  // 연장 정보
+  const ex = extOf(id); let exh = '';
+  if (ex.length) exh = `<ol class="exthist">${ex.map(e=>`<li><b>${esc(e.extDate)}</b> 연장 계약 → 만기 ${esc(e.oldEnd)} → <b>${esc(e.newEnd)}</b> · 원금 ${won(e.oldPrincipal)} → ${won(e.newPrincipal)}원${e.repay?` (${won(e.repay)}원 상환)`:''} · 이율 ${pct(e.oldRate)} → ${pct(e.newRate)}${e.oldDocUrl?` · ${link(e.oldDocUrl,'이전 계약서')}`:''}${e.newDocUrl?` · ${link(e.newDocUrl,'연장 계약서')}`:''}${e.at?` <span class="muted">(처리 ${esc(e.at)})</span>`:''}${e.memo?` · ${esc(e.memo)}`:''}</li>`).join('')}</ol>`;
+  else if (isExtended(v)) {
+    const L=[];
+    if (/연장/.test((v.name||'')+(v.nick||''))) L.push('프로젝트명에 "연장"이 표시된 <b>연장 건</b>입니다.');
+    if (/연장|지속/.test(v.docName||'')) L.push('현재 계약서: '+esc(v.docName)+' (연장/지속 확인서)');
+    D.cond.filter(x=>x.id===id && /연장/.test(x.note||'')).forEach(x=>L.push(esc(ymdDot(x.from))+'부터 적용: '+esc(x.note)+' · '+won(x.principal)+'원 · '+pctTxt(x.rate)));
+    exh = L.map(t=>`<div>${t}</div>`).join('') + '<div class="muted" style="font-size:12px;margin-top:4px">연장이력 시트에 상세 기록(연장 계약일 등)이 없습니다. 이 앱의 \'연장\' 버튼으로 처리하면 기록됩니다.</div>';
+  }
+  const origNote = (v.principal0 && c.principal && v.principal0!==c.principal) ? `<div class="note">원금 변동: 투자원금 ${won(v.principal0)}원 → 현재원금 ${won(c.principal)}원</div>` : '';
+  const hist = D.cond.filter(x=>x.id===id).sort((a,b)=>a.from.localeCompare(b.from));
+  const sch = D.sch.filter(x=>x.id===id).sort((a,b)=>a.payDate.localeCompare(b.payDate));
+  const ct = condTags(v);
+  $('#modal').className = 'modal wide';
+  $('#modal').innerHTML = `
+    <div class="row" style="justify-content:space-between"><span><span class="badge ${st==='종료'?'':st==='만기임박'||st==='계약서 대기'?'st-금액차이':'st-완료'}">${st}</span> ${kbHtml(v)}${isExtended(v)?'<span class="badge st-금액차이">연장</span>':''}</span><button class="btn js-close">닫기</button></div>
+    <h3 style="margin-top:8px">${esc(v.name)} <span class="muted" style="font-weight:400">${esc(v.nick||'')}</span></h3>
+    <div class="muted"><span class="dot" style="background:${colorOf[v.investor]}"></span>${esc(v.investor)} · ${esc(v.id)}</div>
+    ${ct.length?`<div class="note"><b>기본이율 외 조건</b><br>${ct.map(x=>'· '+esc(x.full)).join('<br>')}</div>`:''}
+    ${origNote}
+    <div class="kv2">
+      ${kv('투자ID',esc(v.id))}${kv('투자자',esc(v.investor))}
+      ${kv('프로젝트명',esc(v.name),1)}
+      ${kv('애칭',esc(v.nick),1)}
+      ${kv('구분(DB)',esc(v.kind))}${kv('기간 구분',v.start&&v.end?termKind(v)+' ('+monthsBetween(v.start,v.end)+'개월)':'')}
+      ${kv('투자 입금일자',v.deposit?kdateY(v.deposit):'')}${kv('이자 지급일',v.payDay?'매월 '+v.payDay+'일':'계약별')}
+      ${kv('시작일',v.start?kdateY(v.start):'')}${kv('만기일',v.end?kdateY(v.end):'')}
+      ${kv('투자원금',v.principal0?won(v.principal0)+'원':'')}${kv('현재원금',c.principal?won(c.principal)+'원':'')}
+      ${kv('현재 연이율',c.rate!=null?pct(c.rate):'')}${kv('만기 추가이자율',v.bonus?pctTxt(v.bonus):'')}
+      ${kv('피투자자',esc(v.investee))}${kv('법인등록번호',esc(v.corpNo))}
+      ${kv('연대보증인',esc(v.guarantor),1)}
+      ${kv('계약서',link(v.docUrl,v.docName||'계약서 열기'),1)}
+      ${kv('추가 서류',link(v.doc2Url,'추가 서류 열기'),1)}
+      ${kv('메모',esc(v.memo),1)}
+    </div>
+    <h3 style="font-size:14px;margin:14px 0 6px">연장 정보</h3>
+    ${exh || '<div class="muted">연장 내역 없음</div>'}
+    <h3 style="font-size:14px;margin:14px 0 6px">원금·이율 변경 이력</h3>
+    <div class="tablewrap"><table><tr><th>적용 시작일</th><th class="n">원금</th><th class="n">연이율</th><th>비고</th></tr>${hist.map(x=>`<tr><td>${esc(x.from)}</td><td class="n">${won(x.principal)}</td><td class="n">${pct(x.rate)}</td><td>${esc(x.note||'')}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">없음</td></tr>'}</table></div>
+    <h3 style="font-size:14px;margin:14px 0 6px">입금 일정 <span class="muted" style="font-weight:400;font-size:12px">${sch.length}건 · 눌러서 수정</span></h3>
+    <div class="tablewrap" style="max-height:280px;overflow:auto"><table><tr><th>지급일</th><th>유형</th><th class="n">금액</th><th>상태</th><th>메모</th></tr>${sch.map(x=>{ const t=statusOf(x); return `<tr class="js-open" data-sid="${x.sid}" style="cursor:pointer"><td>${kdateY(x.payDate)}</td><td>${esc(x.type)}</td><td class="n">${won(x.expected)}</td><td><span class="badge st-${t}">${t}</span></td><td>${esc(x.memo||'')}</td></tr>`; }).join('')||'<tr><td colspan="5" class="muted">없음</td></tr>'}</table></div>
+    <div class="row" style="justify-content:flex-end;margin-top:14px">${v.end?`<button class="btn js-extend" data-id="${esc(v.id)}">연장 처리</button>`:''}<button class="btn js-contract" data-id="${esc(v.id)}">계약서 연결</button></div>`;
+  $('#mask').classList.add('on');
+}
+
+/* ---------------- 연장 ---------------- */
+const SS = '/' + '/'; // HtmlService가 문자열 안의 이중 슬래시를 주석으로 오인하지 않도록 나눠 쓴다
+const CONTRACT_FOLDER = 'https:' + SS + 'drive.google.com/drive/folders/1YU79DOdbz2GgtSfPLHZLHgeWehdttxgI';
+function extOf(id){ return (D.ext||[]).filter(e=>e.id===id).sort((a,b)=>a.extDate.localeCompare(b.extDate)); }
+function extCount(id){ return extOf(id).length; }
+function pct(r){ return r==null?'-':(r*100).toFixed(1)+'%'; }
+function extHistHtml(id){
+  const list = extOf(id); if(!list.length) return '';
+  return `<div class="k">연장 이력</div><div><ol class="exthist">${list.map(e=>`<li>${esc(e.extDate)} 연장 → 만기 ${esc(e.newEnd)} · ${won(e.newPrincipal)}원 · ${pct(e.oldRate)} → ${pct(e.newRate)}${e.repay?` · ${won(e.repay)}원 상환`:''}${e.oldDocUrl?` · <a href="${esc(e.oldDocUrl)}" target="_blank">이전 계약서</a>`:''}${e.newDocUrl?` · <a href="${esc(e.newDocUrl)}" target="_blank">연장 계약서</a>`:''}</li>`).join('')}</ol></div>`;
+}
+function addMonthsStr(s, k){ const d=pd(s); const t=new Date(d.getFullYear(), d.getMonth()+k, 1); const last=new Date(t.getFullYear(), t.getMonth()+1, 0).getDate(); t.setDate(Math.min(d.getDate(), last)); return ymd(t); }
+function monthsBetween(a, b){ const x=pd(a), y=pd(b); return (y.getFullYear()-x.getFullYear())*12 + (y.getMonth()-x.getMonth()); }
+function openExtend(id){
+  const v = invMap[id]; if(!v) return;
+  $('#modal').className='modal';
+  const c = condAt(id, v.end) || condAt(id, '9999-12-31') || {};
+  const lastStart = (extOf(id).slice(-1)[0]||{}).extDate || v.start;
+  const term = Math.max(1, monthsBetween(lastStart, v.end));
+  const defEnd = addMonthsStr(v.end, v.kind==='단기' ? term : 12);
+  $('#modal').innerHTML = `
+    <div class="row" style="justify-content:space-between"><b>만기 연장</b><button class="btn js-close">닫기</button></div>
+    <h3 style="margin-top:8px">${esc(v.name)}</h3>
+    <div class="muted"><span class="dot" style="background:${colorOf[v.investor]}"></span>${esc(v.investor)} · ${esc(v.id)} · 현재 ${esc(v.start)} ~ ${esc(v.end)} · ${won(c.principal)}원 · ${pct(c.rate)}</div>
+    <div class="fgrid" style="margin-top:14px">
+      <div><label>연장일 (기존 만기일)</label><input type="date" id="xExt" value="${esc(v.end)}"></div>
+      <div><label>새 만기일</label><input type="date" id="xEnd" value="${defEnd}"></div>
+      <div><label>연장 원금 (원)</label><input type="number" id="xPrin" value="${c.principal||''}"></div>
+      <div><label>새 연이율 (%)</label><input type="number" step="0.1" id="xRate" value="${c.rate!=null?+(c.rate*100).toFixed(2):''}"></div>
+      <div><label>구분</label><select id="xKind"><option value="장기"${v.kind!=='단기'?' selected':''}>장기 (매월 이자)</option><option value="단기"${v.kind==='단기'?' selected':''}>단기 (계약별 이자)</option></select></div>
+      <div class="js-long"><label>이자 지급일 (매월 며칠)</label><input type="number" min="1" max="31" id="xPay" value="${v.payDay||''}"></div>
+      <div class="js-long"><label>만기 추가이자율 (%)</label><input type="number" step="0.1" id="xBonus" value="${v.bonus?+(v.bonus*100).toFixed(2):''}" placeholder="없으면 비워두기"></div>
+      <div class="full js-short"><label>단기 이자 일정 (지급일 · 금액)</label><div id="xShort"></div><button class="btn sm js-addshort" type="button" style="margin-top:6px">+ 이자 추가</button></div>
+      <div class="full"><label>연장 계약서 이름</label><input type="text" id="xDocName" placeholder="예: ${esc(v.nick||v.name)} 연장 계약서"></div>
+      <div class="full"><label>연장 계약서 링크 (구글 드라이브에서 '링크 복사' 후 붙여넣기)</label><input type="url" id="xDocUrl" placeholder="https:${SS}drive.google.com/file/d/..."><div style="margin-top:6px"><a class="btn sm" href="${CONTRACT_FOLDER}" target="_blank">계약서 폴더 열기</a></div></div>
+      <div class="full"><label>메모</label><textarea id="xMemo" rows="2"></textarea></div>
+      <div class="full preview" id="xPreview"></div>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn js-close">취소</button><button class="btn primary js-doextend" data-id="${esc(id)}">연장 저장</button></div>`;
+  $('#mask').classList.add('on');
+  openExtend.cur = { v, c };
+  if (v.kind==='단기') addShortRow(defEnd, '');
+  extPreview();
+  $$('#modal input, #modal select').forEach(el=>el.addEventListener('input', extPreview));
+}
+function addShortRow(date, amt, box, cb){
+  box = box || '#xShort'; cb = cb || extPreview;
+  const d = document.createElement('div'); d.className='row'; d.style.marginTop='4px';
+  d.innerHTML = `<input type="date" class="xsd" value="${date||''}" style="flex:1"><input type="number" class="xsa" placeholder="금액" value="${amt||''}" style="flex:1"><button class="btn sm js-delshort" type="button">삭제</button>`;
+  $(box).appendChild(d);
+  d.querySelectorAll('input').forEach(el=>el.addEventListener('input', cb));
+}
+function extForm(){
+  return {
+    id: openExtend.cur.v.id,
+    extDate: $('#xExt').value, newEnd: $('#xEnd').value,
+    newPrincipal: Number($('#xPrin').value), newRate: Number($('#xRate').value)/100,
+    kind: $('#xKind').value,
+    payDay: $('#xKind').value==='장기' ? (Number($('#xPay').value)||'') : (openExtend.cur.v.payDay||''),
+    bonus: $('#xKind').value==='장기' ? (Number($('#xBonus').value)||0)/100 : (openExtend.cur.v.bonus||0),
+    docName: $('#xDocName').value.trim(), docUrl: $('#xDocUrl').value.trim(), memo: $('#xMemo').value.trim(),
+    shortInterest: $('#xKind').value==='단기' ? $$('#xShort .row').map(r=>({date:r.querySelector('.xsd').value, amount:Number(r.querySelector('.xsa').value)})).filter(x=>x.date&&x.amount>0) : []
+  };
+}
+function extPreview(){
+  const f = extForm(), {v, c} = openExtend.cur;
+  $$('.js-long').forEach(e=>e.hidden = f.kind!=='장기');
+  $$('.js-short').forEach(e=>e.hidden = f.kind!=='단기');
+  const repay = Math.max(0, (c.principal||0) - (f.newPrincipal||0));
+  const lines = [];
+  if (!f.newEnd || f.newEnd <= f.extDate) lines.push('<span style="color:var(--red)">새 만기일은 연장일 이후여야 합니다.</span>');
+  else {
+    const m = monthsBetween(f.extDate, f.newEnd);
+    lines.push(`연장 기간: <b>${esc(f.extDate)} ~ ${esc(f.newEnd)}</b> (${m}개월)`);
+  }
+  if (repay>0) lines.push(`원금 ${won(c.principal)}원 중 <b>${won(repay)}원 상환</b> (${kdateY(f.extDate)} 원금상환 일정으로 남음), <b>${won(f.newPrincipal)}원 연장</b>`);
+  else if (f.newPrincipal > (c.principal||0)) lines.push(`원금을 ${won(c.principal)}원에서 <b>${won(f.newPrincipal)}원</b>으로 늘려 연장 (기존 만기 원금상환 일정은 삭제)`);
+  else lines.push(`원금 <b>${won(f.newPrincipal)}원</b> 그대로 연장 (기존 만기 원금상환 일정은 삭제)`);
+  if (f.kind==='장기' && f.newPrincipal && f.newRate) lines.push(`월 이자 예상: <b>${won(Math.round(f.newPrincipal*f.newRate/12))}원</b> (매월 ${f.payDay||'?'}일, ${pct(c.rate)} → ${pct(f.newRate)})${f.bonus?` · 만기 추가이자 ${won(Math.round(f.newPrincipal*f.bonus))}원`:''}`);
+  if (f.kind==='단기') lines.push(f.shortInterest.length ? `단기 이자 ${f.shortInterest.length}건, 합계 <b>${won(f.shortInterest.reduce((s,x)=>s+x.amount,0))}원</b>` : '<span class="muted">단기 이자 일정이 없으면 나중에 DB 입금일정에 직접 입력하세요.</span>');
+  lines.push(f.docUrl ? '계약서: 새 계약서로 바뀌고, 기존 계약서는 연장 이력에 남습니다.' : '<span class="muted">계약서 링크가 없으면 기존 계약서를 그대로 둡니다.</span>');
+  $('#xPreview').innerHTML = lines.join('<br>');
+}
+function reloadData(after, force){
+  $('#stamp').textContent = '갱신 중…';
+  google.script.run.withSuccessHandler(j=>{ boot(j,false); after&&after(); })
+    .withFailureHandler(e=>{ $('#stamp').textContent='갱신 실패: '+e.message; toast('갱신 실패: '+e.message); })
+    .getData(force!==false);
+}
+
+/* ---------------- 신규 투자 등록 ---------------- */
+function openNew(){
+  $('#modal').className='modal';
+  const investors = [...new Set(D.inv.map(v=>v.investor).filter(Boolean))].sort();
+  $('#modal').innerHTML = `
+    <div class="row" style="justify-content:space-between"><b>신규 투자 등록</b><button class="btn js-close">닫기</button></div>
+    <div class="muted" style="font-size:12px;margin-top:4px">6가지만 입력하세요. 만기일·이자 지급일·피투자자·보증인 등은 나중에 <b>계약서 PDF 링크</b>를 연결하면 계약서를 읽어 자동으로 채웁니다.</div>
+    <div class="fgrid" style="margin-top:12px">
+      <div><label>프로젝트명 *</label><input type="text" id="nName" placeholder="예: 프로젝트 40"></div>
+      <div><label>애칭 *</label><input type="text" id="nNick" placeholder="예: TOSCANA FARM 6"></div>
+      <div><label>투자 입금일 * <span class="muted" style="font-weight:400">(실제 송금한 날)</span></label><input type="date" id="nDeposit" value="${D.today}"></div>
+      <div><label>투자자 *</label><input type="text" id="nInv" list="nInvList" value="${esc(curInvestor||'')}" placeholder="이름 선택 또는 입력"><datalist id="nInvList">${investors.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
+      <div><label>투자원금 (원) *</label><input type="number" id="nPrin" placeholder="예: 30000000"></div>
+      <div><label>연이율 (%) *</label><input type="number" step="0.1" id="nRate" placeholder="예: 18"></div>
+      <div class="full"><label>계약서 PDF 링크 (선택 · 지금 있으면 붙여넣기, 없으면 나중에)</label><input type="url" id="nDocUrl" placeholder="드라이브에서 '링크 복사' 후 붙여넣기"><div style="margin-top:6px"><a class="btn sm" href="${CONTRACT_FOLDER}" target="_blank">계약서 폴더 열기</a></div></div>
+      <div class="full"><label>메모</label><textarea id="nMemo" rows="2"></textarea></div>
+      <div class="full preview" id="nPreview"></div>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn js-close">취소</button><button class="btn primary js-donew">등록</button></div>`;
+  $('#mask').classList.add('on');
+  $$('#modal input, #modal textarea').forEach(el=>el.addEventListener('input', newPreview));
+  newPreview();
+}
+function firstPay(start, day){ const d=pd(start); const t=new Date(d.getFullYear(), d.getMonth()+1, 1); const last=new Date(t.getFullYear(), t.getMonth()+1, 0).getDate(); t.setDate(Math.min(day,last)); return ymd(t); }
+function newForm(){
+  return {
+    name: $('#nName').value.trim(), nick: $('#nNick').value.trim(), investor: $('#nInv').value.trim(),
+    deposit: $('#nDeposit').value, principal: Number($('#nPrin').value), rate: Number($('#nRate').value)/100, rateRaw: $('#nRate').value,
+    docUrl: $('#nDocUrl').value.trim(), memo: $('#nMemo').value.trim()
+  };
+}
+function newPreview(){
+  const f = newForm(), L = [];
+  if (f.principal && f.rateRaw!=='') L.push(`연 이자 약 <b>${won(Math.round(f.principal*f.rate))}원</b> (월 약 ${won(Math.round(f.principal*f.rate/12))}원)`);
+  L.push(f.docUrl ? '등록 후 바로 계약서를 읽어 나머지 항목을 채웁니다.' : '<span class="muted">계약서 링크 없이 등록하면 \'계약서 대기\'로 표시되고, 나중에 투자목록·대시보드에서 \'계약서 연결\'을 누르면 됩니다.</span>');
+  const dup = D.inv.find(v=>v.name===f.name && v.investor===f.investor && (v.deposit||v.start)===f.deposit);
+  if (dup) L.push(`<span style="color:var(--red)">같은 프로젝트명·투자자·입금일의 투자가 이미 있습니다 (${esc(dup.id)}).</span>`);
+  $('#nPreview').innerHTML = L.join('<br>');
+}
+
+/* ---------------- 계약서 연결 · 자동 입력 ---------------- */
+function openContract(id, url, auto){
+  const v = invMap[id]; if(!v) return;
+  $('#modal').className='modal';
+  const c = condAt(id, '9999-12-31') || {};
+  const hasSch = D.sch.some(s=>s.id===id);
+  openContract.cur = { v, c, hasSch, r:null };
+  $('#modal').innerHTML = `
+    <div class="row" style="justify-content:space-between"><b>계약서 연결</b><button class="btn js-close">닫기</button></div>
+    <h3 style="margin-top:8px">${esc(v.name)} <span class="muted" style="font-weight:400">${esc(v.nick||'')}</span></h3>
+    <div class="muted"><span class="dot" style="background:${colorOf[v.investor]}"></span>${esc(v.investor)} · ${esc(v.id)} · 입금일 ${esc(v.deposit||v.start)} · ${won(v.principal0)}원 · ${pct(c.rate)}</div>
+    <div style="margin-top:12px"><label>계약서 PDF 링크 (구글 드라이브에서 '링크 복사' 후 붙여넣기)</label>
+      <div class="row"><input type="url" id="cUrl" value="${esc(url||'')}" placeholder="https:${SS}drive.google.com/file/d/..." style="flex:1"><button class="btn primary js-cread">계약서 읽기</button></div>
+      <div style="margin-top:6px"><a class="btn sm" href="${CONTRACT_FOLDER}" target="_blank">계약서 폴더 열기</a></div></div>
+    <div id="cBody" style="margin-top:12px"></div>`;
+  $('#mask').classList.add('on');
+  if (auto && url) readContractUI();
+}
+function readContractUI(){
+  const url = $('#cUrl').value.trim();
+  if (!/^https?:[/][/]/.test(url)) return toast('링크는 https:'+SS+' 로 시작해야 합니다');
+  const btn = $('.js-cread'); btn.disabled = true; btn.textContent = '읽는 중…';
+  $('#cBody').innerHTML = '<p class="muted">계약서를 읽고 있습니다. 스캔본이면 10~30초 걸릴 수 있어요…</p>';
+  google.script.run
+    .withSuccessHandler(j=>{ btn.disabled=false; btn.textContent='다시 읽기'; openContract.cur.r = JSON.parse(j); contractForm(); })
+    .withFailureHandler(e=>{ btn.disabled=false; btn.textContent='계약서 읽기'; $('#cBody').innerHTML = `<p style="color:var(--red)">읽기 실패: ${esc(e.message)}</p><p class="muted" style="font-size:12px">링크가 맞는지, 그 파일을 열 수 있는 계정인지 확인해 주세요.</p>`; })
+    .readContract(url);
+}
+function cExtraRow(date, amt, memo){
+  const d = document.createElement('div'); d.className='row cx'; d.style.marginTop='4px';
+  d.innerHTML = `<input type="date" class="cxd" value="${date||''}" style="flex:1"><input type="number" class="cxa" placeholder="금액" value="${amt||''}" style="flex:1"><input type="text" class="cxm" placeholder="메모" value="${esc(memo||'')}" style="flex:1"><button class="btn sm js-cdel" type="button">삭제</button>`;
+  $('#cExtra').appendChild(d);
+  d.querySelectorAll('input').forEach(el=>el.addEventListener('input', contractCheck));
+}
+function contractForm(){
+  const { v, c, hasSch, r } = openContract.cur;
+  const P = v.principal0 || c.principal || r.principal || 0;
+  const rateIn = c.rate!=null ? +(c.rate*100).toFixed(2) : '';
+  const start = r.start || v.start;
+  const kind = r.kind || v.kind || '장기';
+  const info = `
+      <div><label>피투자자명</label><input type="text" id="cInvestee" value="${esc(r.investee||v.investee||'')}"></div>
+      <div><label>법인등록번호</label><input type="text" id="cCorp" value="${esc(r.corpNo||v.corpNo||'')}"></div>
+      <div class="full"><label>연대보증인</label><input type="text" id="cGuar" value="${esc(r.guarantor||v.guarantor||'')}"></div>
+      <div class="full"><label>계약서 이름</label><input type="text" id="cDocName" value="${esc(r.docName ? r.docName + (r.investorName||v.investor ? '('+(r.investorName||v.investor)+')' : '') : (v.docName||'투자계약서'))}"></div>`;
+  $('#cBody').innerHTML = `
+    <div class="muted" style="font-size:12px">계약서 <b>${esc(r.fileName||'')}</b>에서 읽은 내용입니다. 틀린 곳은 고친 뒤 저장하세요.</div>
+    <div id="cWarn"></div>
+    <div class="fgrid" style="margin-top:10px">
+      ${hasSch ? `<div class="full muted" style="font-size:12px">이 투자는 이미 입금 일정이 있어 <b>피투자자·보증인·계약서 정보만</b> 채웁니다. (기간·이율 변경은 '연장'을 이용하세요)</div>` : `
+      <div><label>투자시작일 (계약서)</label><input type="date" id="cStart" value="${esc(start)}"></div>
+      <div><label>만기일 (원금 지급일)</label><input type="date" id="cEnd" value="${esc(r.end||'')}"></div>
+      <div><label>구분</label><select id="cKind"><option value="장기"${kind!=='단기'?' selected':''}>장기 (매월 이자)</option><option value="단기"${kind==='단기'?' selected':''}>단기 (계약별 이자)</option></select></div>
+      <div><label>연이율 (%)</label><input type="number" step="0.1" id="cRate" value="${r.rate!=null&&r.kind==='장기'?r.rate:rateIn}"></div>
+      <div class="js-clong"><label>이자 지급일 (매월 며칠)</label><input type="number" min="1" max="31" id="cPay" value="${r.payDay||(start?+start.slice(8,10):'')}"></div>
+      <div class="js-clong"><label>만기 추가이자율 (%)</label><input type="number" step="0.1" id="cBonus" value="${r.bonus||''}" placeholder="없으면 비워두기"></div>
+      <div class="full"><label>${kind==='단기'?'단기 이자':'별도 지급(투자수수료 등)'} 일정 · 지급일 · 금액 · 메모</label><div id="cExtra"></div><button class="btn sm js-cadd" type="button" style="margin-top:6px">+ 추가</button></div>`}
+      ${info}
+      <div class="full preview" id="cPreview"></div>
+      <details class="full"><summary class="muted" style="font-size:12px;cursor:pointer">계약서에서 읽은 글자 보기</summary><pre style="white-space:pre-wrap;font-size:11px;max-height:220px;overflow:auto;background:#f8fafc;padding:8px;border-radius:6px">${esc(r.text||'')}</pre></details>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn js-close">취소</button><button class="btn primary js-capply">${hasSch?'정보 저장':'저장하고 일정 만들기'}</button></div>`;
+  if (!hasSch) {
+    (r.extra||[]).forEach(x=>cExtraRow(x.date, Math.round(P*x.pct/100), x.memo));
+    $$('#cBody input, #cBody select').forEach(el=>el.addEventListener('input', contractCheck));
+  }
+  contractCheck();
+}
+function cForm(){
+  const { v, hasSch, r } = openContract.cur;
+  const f = { id:v.id, docUrl:r.url, docName:$('#cDocName').value.trim(), investee:$('#cInvestee').value.trim(), corpNo:$('#cCorp').value.trim(), guarantor:$('#cGuar').value.trim() };
+  if (hasSch) return f;
+  const kind = $('#cKind').value;
+  return Object.assign(f, { start:$('#cStart').value, end:$('#cEnd').value, kind,
+    rate: $('#cRate').value===''?'':Number($('#cRate').value)/100,
+    payDay: kind==='장기' ? (Number($('#cPay').value)||'') : '',
+    bonus: kind==='장기' ? (Number($('#cBonus').value)||0)/100 : 0,
+    extra: $$('#cExtra .cx').map(d=>({date:d.querySelector('.cxd').value, amount:Number(d.querySelector('.cxa').value), memo:d.querySelector('.cxm').value.trim()})).filter(x=>x.date&&x.amount>0) });
+}
+function contractCheck(){
+  const { v, c, hasSch, r } = openContract.cur;
+  const W = [], L = [];
+  if (r.principal && v.principal0 && r.principal!==v.principal0) W.push(`투자금이 다릅니다: 입력 ${won(v.principal0)}원 / 계약서 ${won(r.principal)}원`);
+  if (r.investorName && r.investorName!==v.investor) W.push(`투자자 이름이 다릅니다: 입력 ${esc(v.investor)} / 계약서 ${esc(r.investorName)}`);
+  if (r.start && v.deposit && r.start < v.deposit) W.push(`계약서 투자시작일(${esc(r.start)})이 입금일(${esc(v.deposit)})보다 빠릅니다. 날짜를 확인해 주세요.`);
+  if (!hasSch && r.kind==='장기' && r.rate!=null && c.rate!=null && Math.abs(r.rate-c.rate*100)>0.001) W.push(`연이율이 다릅니다: 입력 ${pct(c.rate)} / 계약서 ${r.rate}% (계약서 이율로 채웠습니다)`);
+  (r.warn||[]).forEach(k=>W.push(({start:'투자일',end:'만기일',principal:'투자금'})[k]+'을(를) 계약서에서 찾지 못했습니다. 직접 입력해 주세요.'));
+  $('#cWarn').innerHTML = W.length ? `<div style="margin-top:8px;padding:8px 10px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;font-size:13px">${W.map(w=>'⚠ '+w).join('<br>')}</div>` : '';
+  if (!hasSch) {
+    const f = cForm();
+    $$('.js-clong').forEach(e=>e.hidden = f.kind!=='장기');
+    if (!f.start || !f.end || f.end<=f.start) L.push('<span style="color:var(--red)">만기일은 투자일 이후여야 합니다.</span>');
+    else L.push((v.deposit?`입금일 ${esc(v.deposit)} → `:'')+`투자 기간: <b>${esc(f.start)} ~ ${esc(f.end)}</b> (${monthsBetween(f.start,f.end)}개월) → 기간상 <b>${termKind({start:f.start,end:f.end})}</b>`);
+    const P = v.principal0 || c.principal || 0;
+    if (f.kind==='장기' && f.rate!=='') L.push(`월 이자: <b>${won(Math.round(P*f.rate/12))}원</b> × ${Math.max(0,monthsBetween(f.start,f.end))}회 (매월 ${f.payDay||'?'}일, 첫 지급 약정일 ${f.payDay&&f.start?esc(firstPay(f.start,f.payDay)):'-'})`);
+    if (f.kind==='장기' && f.bonus) L.push(`만기 추가이자: <b>${won(Math.round(P*f.bonus))}원</b>`);
+    if (f.extra.length) L.push(`${f.kind==='단기'?'단기 이자':'별도 지급'} ${f.extra.length}건: ${f.extra.map(x=>esc(x.date)+' '+won(x.amount)+'원').join(', ')}`);
+    else if (f.kind==='단기') L.push('<span class="muted">단기 이자 일정을 찾지 못했습니다. 필요하면 + 추가로 넣으세요.</span>');
+    L.push(`만기 원금상환: <b>${won(P)}원</b> (${esc(f.end||'-')})`);
+  }
+  $('#cPreview').innerHTML = L.join('<br>');
+}
+
+/* ---------------- 상세 · 수정 ---------------- */
+function openModal(sid){
+  const x = D.sch.find(s=>s.sid===sid); if(!x) return;
+  $('#modal').className='modal';
+  const v = invMap[x.id]||{}; const st=statusOf(x); const reason=shiftReason(x);
+  const c = condAt(x.id, x.due)||{};
+  $('#modal').innerHTML = `
+    <div class="row" style="justify-content:space-between"><span class="badge st-${st}">${st}</span><button class="btn js-close">닫기</button></div>
+    <h3 style="margin-top:8px">${esc(v.name||x.id)}</h3>
+    <div class="muted"><span class="dot" style="background:${colorOf[v.investor]}"></span>${esc(v.investor)} · ${esc(x.type)} · ${esc(v.nick||'')}</div>
+    <div class="kv">
+      <div class="k">예정 금액</div><div><b style="font-size:16px">${won(x.expected)}원</b></div>
+      <div class="k">지급 예정일</div><div><b>${kdateY(x.payDate)}</b>${reason?`<div class="muted" style="font-size:12px">${esc(reason)}</div>`:''}</div>
+      <div class="k">약정일</div><div>${kdateY(x.due)}</div>
+      ${x.type!=='원금상환'?`<div class="k">적용 원금·이율</div><div>${won(x.principal||c.principal)}원 · ${((x.rate||c.rate||0)*100).toFixed(1)}%</div>`:''}
+      <div class="k">투자 기간</div><div>${esc(v.start)} ~ ${esc(v.end)}</div>
+      ${v.deposit?`<div class="k">투자 입금일</div><div>${esc(v.deposit)}</div>`:''}
+      <div class="k">피투자자</div><div>${esc(v.investee||'-')}</div>
+      <div class="k">법인등록번호</div><div>${esc(v.corpNo||'-')}</div>
+      <div class="k">연대보증인</div><div>${esc(v.guarantor||'-')}</div>
+      ${v.memo?`<div class="k">투자 메모</div><div style="white-space:normal">${esc(v.memo)}</div>`:''}
+      <div class="k">계약서</div><div class="docbtns">${v.docUrl?`<a class="btn primary" href="${esc(v.docUrl)}" target="_blank">${esc(v.docName||'계약서 열기')}</a>`:'<span class="muted">등록된 계약서 없음</span>'}${v.doc2Url?`<a class="btn" href="${esc(v.doc2Url)}" target="_blank">추가 서류</a>`:''}</div>
+      ${extHistHtml(x.id)}
+    </div>
+    ${x.type==='원금상환' && !x.paid && x.due===v.end ? `<div class="matbox"><b>만기 처리</b><div class="muted" style="font-size:12px;margin:2px 0 8px">원금을 돌려받았으면 아래 '입금 확인'에 체크하고 저장하세요. 연장하면 '연장 처리'를 누르세요.</div>
+      <div class="row"><button class="btn primary js-extend" data-id="${esc(x.id)}">연장 처리</button></div></div>`:''}
+    <div class="edit">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)"><input type="checkbox" id="mPaid" ${x.paid?'checked':''} style="width:18px;height:18px"> 입금 확인${x.paidAt?` <span class="muted" style="font-size:12px">(${esc(x.paidAt)})</span>`:''}</label>
+      <div><label>실제 입금액 (예정 금액과 다를 때만 입력)</label><input type="number" id="mActual" placeholder="${x.expected}" value="${x.actual==null?'':x.actual}"></div>
+      <div><label>지급일 변경 (비워두면 약정일 기준 영업일)</label>
+        <div class="row"><input type="date" id="mDate" value="${x.changed||''}" style="flex:1"><button class="btn js-reset">원래대로</button></div></div>
+      <div><label>메모</label><textarea id="mMemo" rows="2">${esc(x.memo)}</textarea></div>
+      <div class="row" style="justify-content:flex-end"><button class="btn js-close">취소</button><button class="btn primary js-save" data-sid="${x.sid}">저장</button></div>
+    </div>`;
+  $('#mask').classList.add('on');
+}
+function closeModal(){ $('#mask').classList.remove('on'); $('#modal').className='modal'; }
+
+function save(sid, patch, done){
+  const x = D.sch.find(s=>s.sid===sid);
+  const before = Object.assign({}, x);
+  Object.assign(x, patch);
+  if ('changed' in patch) x.payDate = patch.changed || nextBizDay(x.due);
+  render();
+  google.script.run
+    .withSuccessHandler(r=>{ const o=JSON.parse(r); x.payDate=o.payDate||x.payDate; x.expected=o.expected; x.paidAt=o.paidAt; render(); toast('저장했습니다'); done&&done(); })
+    .withFailureHandler(e=>{ Object.assign(x, before); render(); toast('저장 실패: '+e.message); })
+    .updateSchedule(sid, patch);
+}
+
+document.addEventListener('click', e=>{
+  const t = e.target;
+  if (t.matches('#tabs button')) return show(t.dataset.v);
+  if (t.matches('.monthnav button')) { curMonth = new Date(curMonth.getFullYear(), curMonth.getMonth()+(+t.dataset.m), 1); return render(); }
+  if (t.matches('.js-thismonth')) { const d=pd(D.today); curMonth=new Date(d.getFullYear(), d.getMonth(), 1); return render(); }
+  if (t.matches('.js-paid')) { e.stopPropagation(); return save(t.dataset.sid, {paid:t.checked}); }
+  if (t.matches('.js-close') || t.id==='mask') return closeModal();
+  if (t.matches('.js-donew')) {
+    const f = newForm();
+    if (!f.name) return toast('프로젝트명을 입력해 주세요');
+    if (!f.investor) return toast('투자자를 입력해 주세요');
+    if (!f.nick) return toast('애칭을 입력해 주세요');
+    if (!f.deposit) return toast('투자 입금일을 입력해 주세요');
+    if (!(f.principal>0)) return toast('투자원금을 입력해 주세요');
+    if (f.rateRaw==='') return toast('연이율을 입력해 주세요');
+    if (f.docUrl && !/^https?:[/][/]/.test(f.docUrl)) return toast('링크는 https:'+SS+' 로 시작해야 합니다');
+    if (D.inv.find(v=>v.name===f.name && v.investor===f.investor && (v.deposit||v.start)===f.deposit) && !t.dataset.ok) { t.dataset.ok='1'; t.textContent='그래도 등록'; return toast('같은 투자가 이미 있습니다. 맞으면 한 번 더 누르세요'); }
+    t.disabled = true; t.textContent = '저장 중…';
+    google.script.run
+      .withSuccessHandler(r=>{ const o=JSON.parse(r); const url=f.docUrl; closeModal(); toast(o.id+' 등록 완료'+(url?' · 계약서를 읽습니다':' · 계약서 대기')); reloadData(()=>{ if(url) openContract(o.id, url, true); }); })
+      .withFailureHandler(err=>{ t.disabled=false; t.textContent='등록'; toast('등록 실패: '+err.message); })
+      .addInvestment({ name:f.name, nick:f.nick, investor:f.investor, deposit:f.deposit, principal:f.principal, rate:f.rate, memo:f.memo });
+    return;
+  }
+  if (t.matches('.js-extend')) { e.stopPropagation(); return openExtend(t.dataset.id); }
+  if (t.matches('.js-contract')) { e.stopPropagation(); return openContract(t.dataset.id); }
+  if (t.matches('.js-cread')) return readContractUI();
+  if (t.matches('.js-cadd')) { cExtraRow('', '', ''); return contractCheck(); }
+  if (t.matches('.js-cdel')) { t.closest('.cx').remove(); return contractCheck(); }
+  if (t.matches('.js-capply')) {
+    const f = cForm(), {hasSch} = openContract.cur;
+    if (!hasSch) {
+      if (!f.start || !f.end || f.end<=f.start) return toast('투자일·만기일을 확인해 주세요');
+      if (f.rate==='') return toast('연이율을 입력해 주세요');
+      if (f.kind==='장기' && !f.payDay) return toast('이자 지급일을 입력해 주세요');
+    }
+    t.disabled = true; t.textContent = '저장 중…';
+    google.script.run
+      .withSuccessHandler(r=>{ const o=JSON.parse(r); closeModal(); toast(o.mode==='full' ? '계약서 적용 완료 · 일정 '+o.added+'건 생성' : '계약서 정보 저장 완료'); reloadData(); })
+      .withFailureHandler(err=>{ t.disabled=false; t.textContent='저장'; toast('저장 실패: '+err.message); })
+      .applyContract(f);
+    return;
+  }
+  if (t.matches('.js-addshort')) { addShortRow('', ''); return extPreview(); }
+  if (t.matches('.js-delshort')) { t.closest('.row').remove(); return extPreview(); }
+  if (t.matches('.js-doextend')) {
+    const f = extForm();
+    if (!f.newEnd || f.newEnd <= f.extDate) return toast('새 만기일을 확인해 주세요');
+    if (!(f.newPrincipal>0)) return toast('연장 원금을 입력해 주세요');
+    if (!($('#xRate').value!=='' && f.newRate>=0)) return toast('새 이율을 입력해 주세요');
+    if (f.kind==='장기' && !f.payDay) return toast('이자 지급일을 입력해 주세요');
+    if (f.docUrl && !/^https?:[/][/]/.test(f.docUrl)) return toast('계약서 링크는 https:'+SS+' 로 시작해야 합니다');
+    t.disabled = true; t.textContent = '저장 중…';
+    google.script.run
+      .withSuccessHandler(r=>{ const o=JSON.parse(r); closeModal(); toast('연장 저장 완료 · 일정 '+o.added+'건 추가'+(o.repay?' · 상환 '+won(o.repay)+'원':'')); reloadData(); })
+      .withFailureHandler(err=>{ t.disabled=false; t.textContent='연장 저장'; toast('연장 실패: '+err.message); })
+      .extendInvestment(f);
+    return;
+  }
+  if (t.matches('.js-reset')) { $('#mDate').value=''; return; }
+  if (t.matches('.js-save')) {
+    const sid=t.dataset.sid, x=D.sch.find(s=>s.sid===sid);
+    const a=$('#mActual').value.trim();
+    const patch={ paid:$('#mPaid').checked, actual: a===''?null:Number(a), changed:$('#mDate').value||'', memo:$('#mMemo').value };
+    if (patch.changed===(x.changed||'')) delete patch.changed;
+    if (patch.paid===x.paid) delete patch.paid;
+    if (patch.actual===x.actual) delete patch.actual;
+    if (patch.memo===(x.memo||'')) delete patch.memo;
+    if (!Object.keys(patch).length) return closeModal();
+    return save(sid, patch, closeModal);
+  }
+  const ir = t.closest('tr.js-inv');
+  if (ir && !t.closest('a,button,input')) return openInv(ir.dataset.id);
+  const chip = t.closest('.chip, .js-open');
+  if (chip && chip.dataset.sid) openModal(chip.dataset.sid);
+});
+$('#investorSel').addEventListener('change', e=>{ curInvestor=e.target.value; render(); });
+$('#yearSel').addEventListener('change', renderChart);
+$('#showPrincipal').addEventListener('change', renderCal);
+$('#showEnded').addEventListener('change', renderList);
+$('#listSort').addEventListener('change', renderList);
+$('#newBtn').addEventListener('click', openNew);
+$('#genBtn').addEventListener('click', ()=>{
+  if(!confirm('투자목록을 기준으로 이번 달 이후 빠진 이자·원금상환 일정을 추가할까요?')) return;
+  $('#genBtn').disabled=true;
+  google.script.run.withSuccessHandler(r=>{ const o=JSON.parse(r); toast(o.added+'건 추가'+(o.missing.length?' · 조건이력 없음: '+o.missing.join(', '):'')); reloadData(()=>{ $('#genBtn').disabled=false; }); })
+    .withFailureHandler(e=>{ toast('실패: '+e.message); $('#genBtn').disabled=false; }).generateSchedule();
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+try { const c = localStorage.getItem(LSK); if (c) boot(c, true); } catch(e){}
+google.script.run.withSuccessHandler(j=>boot(j,false))
+  .withFailureHandler(e=>{ if(!D) $('#loading').textContent='불러오기 실패: '+e.message; else $('#stamp').textContent='갱신 실패: '+e.message; })
+  .getData(false);
+$('#refreshBtn').addEventListener('click', ()=>reloadData(null, true));
+</script>
+</body>
+</html>
